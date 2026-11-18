@@ -7,9 +7,9 @@ Strapi CMS + Docker Compose. Đọc hết mục 1 (trạng thái) trước khi c
 
 | Thành phần | Trạng thái | Ghi chú |
 |---|---|---|
-| Frontend Next.js (`~/workspace/new-project`, repo này) | ✅ Xong, đã push | 5 route: `/`, `/advertisers`, `/contact`, `/locations`, `/icon.svg`. `npm run lint` sạch, `npm run build` pass. |
+| Frontend Next.js (repo `win95/FE_inventory`) | ✅ Xong, đã push | 5 route: `/`, `/advertisers`, `/contact`, `/locations`, `/icon.svg`. `npm run lint` sạch, `npm run build` pass. Chạy được cả bằng `npm run dev` lẫn Docker Compose. |
 | Backend FastAPI + SQLite | ✅ Đã có code (repo riêng `win95/BE_inventory`) | Chạy trên host theo mục 5. Chưa có dữ liệu thật trong SQLite — cần nhập dữ liệu thử nghiệm (mục 5.5) thì các khối mới hiện số. |
-| Strapi CMS + Postgres | ❌ Chưa dựng | Cần scaffold theo mục 4. Chưa có content type, chưa có bài viết nào. |
+| Strapi CMS + Postgres | ✅ Đã có code (`cms/` + `docker-compose.yml` trong repo này) | Content types, quyền Public và webhook đã khai sẵn trong code (mục 6.1–6.2). Chưa có bài viết nào — cần tạo nội dung và Publish thì các khối nội dung mới hiện. |
 | Dữ liệu SQLite / Strapi | ❌ Chưa có | Database rỗng → giao diện hiện trạng thái rỗng/lỗi rõ ràng, không tự điền số. Đây là hành vi đúng theo thiết kế, không phải lỗi. |
 
 ## 2. Tổng quan kiến trúc (mô hình lai đã chốt)
@@ -43,7 +43,7 @@ Bảng cổng mặc định:
 
 | Dịch vụ | Cổng | Chạy ở đâu |
 |---|---|---|
-| Frontend Next.js | 3000 | Host (`npm run dev`) |
+| Frontend Next.js | 3000 | Host (`npm run dev`) hoặc Docker Compose |
 | FastAPI + SQLite | 8000 | Host (Uvicorn) |
 | Strapi CMS | 1337 | Docker Compose |
 | Postgres (cho Strapi) | 5432 | Docker Compose |
@@ -58,16 +58,23 @@ Bảng cổng mặc định:
 
 ```bash
 git clone https://github.com/win95/FE_inventory.git
+git clone https://github.com/win95/BE_inventory.git
 cd FE_inventory
 ```
+
+Hai repo: `FE_inventory` chứa Frontend + Strapi CMS + Compose; `BE_inventory`
+chứa backend FastAPI + SQLite.
 
 ## 4. Frontend Next.js
 
 ```bash
 npm install
-cp .env.example .env.local
+cp .env.example .env.local   # chỉ chạy `npm run dev`; chạy Compose thì copy sang `.env` (mục 6.3)
 npm run dev      # http://localhost:3000
 ```
+
+File `.env.example` ở repo root dùng chung cho cả hai cách chạy: `npm run dev`
+đọc `.env.local` (hoặc `.env`), còn `docker compose up` đọc `.env`.
 
 Biến môi trường (xem `.env.example`):
 
@@ -109,8 +116,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 SQLite: một file duy nhất, ví dụ `awing.db` đặt cạnh code backend. Backend
-tự tạo bảng khi khởi động (hoặc chạy script seed/migration của backend).
-Thao tác trực tiếp file này trên host để thêm/xoá/sửa dữ liệu thử nghiệm.
+tự tạo bảng rỗng khi khởi động. Thao tác trực tiếp file này trên host để
+thêm/xoá/sửa dữ liệu thử nghiệm.
 
 ### 5.3. Hợp đồng API Frontend đang gọi
 
@@ -123,14 +130,14 @@ Base URL: `NEXT_PUBLIC_API_BASE_URL`. Tất cả trả JSON. CORS phải mở ch
 | `GET` | `/api/coverage` | Heatmap, màn Location Network | `{ provinces: [{ province, level, venues }], venueTypes: [{ type, count }], directory?, industryStats? }`. `directory` = thư mục địa điểm `{ name, category, venues }`; `industryStats` = số liệu theo ngành `{ industry, engagement, reach }`. Hai trường sau không có thì Frontend tự ẩn khối tương ứng. |
 | `POST` | `/api/suggest` | Trang `/advertisers` | Body `{ prompt }`. Trả `{ overview: { locations, venues, reach, engagement, offPeak }, locations: [{ name, area, city, reach }], formats: [{ name, metricLabel, metricValue, durationSeconds? }], cities?: [{ name, reach, engagements, impressionsPerDay }] }`. `cities` để chip thành phố bật/tắt tính lại tổng. |
 | `POST` | `/api/leads` | Lead form (trang chủ) | Body `{ name, email, phone, message }`. Ghi vào SQLite, trả 200/201 khi nhận. |
+| `POST` | `/api/contact` | Form Contact Us (`/contact`) | Body `{ type, name, email, phone, message }`. Ghi vào SQLite. |
+| `GET` | `/api/events/stats` | Realtime (SSE) | Server-Sent Events, mỗi sự kiện là một full snapshot `NetworkStats`. Xem mục 5.4. |
+| `GET` | `/api/auth/google` | Nút đăng nhập Google | Bắt đầu luồng OAuth Google, callback về Frontend. Cần `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (tạo trên Google Cloud Console) và redirect URI khớp với cấu hình. |
+| `POST` | `/api/webhooks/strapi` | Nhận webhook từ Strapi | Xem mục 6.2. |
 
 Case study **không** qua backend này: Frontend lấy qua Strapi REST
 (`GET /api/case-studies` trên Strapi, chỉ bản published), theo ranh giới
 đã chốt ở Plan §6.
-| `POST` | `/api/contact` | Form Contact Us (`/contact`) | Body `{ type, name, email, phone, message }`. Ghi vào SQLite. |
-| `GET` | `/api/events/stats` | Realtime (SSE) | Server-Sent Events, mỗi sự kiện là một full snapshot `NetworkStats`. Xem mục 5.4. |
-| `GET` | `/api/auth/google` | Nút đăng nhập Google | Bắt đầu luồng OAuth Google, callback về Frontend. Cần `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (tạo trên Google Cloud Console) và redirect URI khớp với cấu hình. |
-| `POST` | `/api/webhooks/strapi` | Nhận webhook từ Strapi | Xem mục 6.4. |
 
 ### 5.4. Realtime — vòng lặp backend push full data (đã chốt)
 
@@ -141,12 +148,14 @@ Case study **không** qua backend này: Frontend lấy qua Strapi REST
 - Ngân sách trễ: chu kỳ 30 giây + vài giây xử lý ≈ 35–40 giây, trong giới
   hạn 1 phút đã chốt. Kỳ nào lỗi thì ghi log bỏ qua, kỳ sau tự bù toàn bộ
   (không cần cơ chế phát lại).
-- Bản đẩy có số thứ tự + thời điểm tạo (Frontend bỏ qua bản cũ hơn, hiện
-  thời điểm cập nhật gần nhất). Đẩy mỗi kỳ kể cả khi dữ liệu chưa đổi.
+- Mỗi bản đẩy là full snapshot 4 số liệu (connections, provinces, chains,
+  venues) — Frontend thay toàn bộ khối hiển thị. Đẩy mỗi kỳ kể cả khi dữ
+  liệu chưa đổi.
 - Mất SSE thì Frontend tự chuyển sang polling `GET /api/network-stats`
   mỗi 60 giây.
-- Webhook từ Strapi (khi editor Publish) cũng đi qua vòng lặp này: FastAPI
-  nhận tín hiệu rồi đẩy sự kiện để Frontend fetch lại nội dung từ Strapi.
+- Webhook từ Strapi (khi editor Publish) không đi qua vòng lặp 30 giây:
+  FastAPI nhận webhook rồi đẩy ngay một sự kiện `content-updated` qua SSE
+  để Frontend fetch lại nội dung từ Strapi.
 
 ### 5.5. Nhập dữ liệu thử nghiệm vào SQLite
 
@@ -237,7 +246,6 @@ npm run develop        # http://localhost:1337/admin
 # Thử nhanh bằng SQLite (không cần Postgres):
 DATABASE_CLIENT=sqlite DATABASE_FILENAME=.tmp/data.db npm run develop
 ```
-cấp Strapi hay sửa Compose.
 
 ## 7. Thứ tự chạy toàn bộ (checklist)
 
@@ -271,18 +279,22 @@ cấp Strapi hay sửa Compose.
 | Triệu chứng | Nguyên nhân thường gặp | Cách xử lý |
 |---|---|---|
 | Trang chủ hiện empty/error state | Backend chưa chạy, hoặc SQLite chưa có dữ liệu | Chạy FastAPI (mục 5), thêm dữ liệu vào SQLite. Đây là hành vi đúng, không phải lỗi. |
-| Nút đăng nhập Google bị mờ | `NEXT_PUBLIC_API_BASE_URL` chưa cấu hình, hoặc backend chưa có `/api/auth/google` | Cấu hình `.env.local`, dựng endpoint auth ở backend. |
-| Frontend gọi Strapi trả 403 | Quên bật quyền Public | Mục 6.3: bật `find`/`findOne` cho role Public. |
-| Frontend gọi Strapi trả 404 | Sai tên content type / chưa Publish bài | Kiểm tra slug trong Content-Type Builder; bài phải ở trạng thái Published. |
-| Publish trên Strapi mà Frontend không đổi | Webhook chưa tới FastAPI, hoặc Frontend chưa fetch lại | Kiểm tra URL webhook (mục 6.4), log FastAPI; thử reload trang để kiểm tra nội dung đã Publish chưa. |
-| `docker compose up` lỗi kết nối Postgres | Strapi chạy trước khi Postgres sẵn sàng | `docker compose down` rồi `up` lại; kiểm tra `DATABASE_HOST=postgres` và password khớp hai service. |
+| Nút đăng nhập Google bị mờ | `NEXT_PUBLIC_API_BASE_URL` chưa cấu hình, hoặc backend chưa cấu hình Google OAuth | Cấu hình `.env.local`, kiểm tra `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` trong `.env` của repo `BE_inventory`. |
+| Frontend gọi Strapi trả 403 | Bootstrap chưa cấp quyền Public | Xem log Strapi (`docker compose logs strapi`): phải có dòng `[bootstrap] Đã cấp quyền public`. Nếu không có, kiểm tra lỗi bootstrap trong log; kiểm tra lại trong admin: Settings → Users & Permissions → Roles → Public phải có `find`/`findOne` cho 4 content type. |
+| Frontend gọi Strapi trả 404 | Sai tên content type / chưa Publish bài / Single Type Home chưa có bản ghi | Kiểm tra slug trong Content-Type Builder; bài phải ở trạng thái Published. Riêng `/api/home` trả 404 khi chưa tạo bản Home nào là đúng (Strapi trả 404 cho Single Type rỗng). |
+| Publish trên Strapi mà Frontend không đổi | Webhook chưa tới FastAPI, hoặc Frontend chưa fetch lại | Kiểm tra webhook đã tạo chưa (log Strapi phải có `[bootstrap] Đã tạo webhook tới backend`) và URL webhook đúng chưa (mục 6.2); kiểm tra log FastAPI có nhận webhook không; thử reload trang để kiểm tra nội dung đã Publish chưa. |
+| `docker compose up` báo thiếu biến | Chưa copy `.env.example` sang `.env`, hoặc thiếu secret | `cp .env.example .env` rồi điền đủ các secret (Compose báo rõ tên biến thiếu). |
+| `docker compose up` lỗi kết nối Postgres | Password không khớp giữa hai service, hoặc Postgres chưa sẵn sàng | Kiểm tra `POSTGRES_PASSWORD` trong `.env` khớp `DATABASE_PASSWORD` của service strapi; Compose đã có healthcheck + `depends_on`, chờ Postgres healthy rồi Strapi mới lên. |
+| Đổi `.env` rồi mà Frontend trong Compose vẫn hiện số liệu cũ | `NEXT_PUBLIC_*` nhúng vào bundle lúc build | Build lại image Frontend: `docker compose up --build -d`. |
 | Lỗi Node version khi chạy Strapi | Node không phải LTS | Dùng Node 22 hoặc 24 LTS (`node -v` kiểm tra). |
-| Cổng 3000/8000/1337 đã có tiến trình khác | Trùng cổng | Đổi cổng trong lệnh chạy (Frontend: `npm run dev -- -p 3001`; FastAPI: `--port 8001` và sửa `.env.local` theo). |
+| Cổng 3000/8000/1337 đã có tiến trình khác | Trùng cổng | Chạy host: Frontend `npm run dev -- -p 3001`; FastAPI `--port 8001` và sửa `.env.local` theo. Chạy Compose: sửa cổng map trong `docker-compose.yml` (ví dụ `"3001:3000"`). |
 
 ## 9. Ghi chú deploy (tóm tắt)
 
 - Frontend: deploy Vercel hoặc bất kỳ host Node nào; set 2 biến
   `NEXT_PUBLIC_API_BASE_URL` và `NEXT_PUBLIC_STRAPI_URL` trỏ về domain thật.
+  Hai biến này nhúng vào bundle lúc build nên đổi giá trị là phải build lại
+  (deploy lại, hoặc `docker compose up --build` khi chạy Compose).
 - FastAPI: chạy trên VPS/host có Python, dùng systemd hoặc PM2 giữ tiến
   trình; đặt sau reverse proxy (Nginx/Caddy) nếu cần HTTPS.
 - Strapi + Postgres: chạy bằng Compose trên cùng VPS (hoặc tách máy);
