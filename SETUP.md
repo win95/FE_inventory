@@ -159,8 +159,10 @@ Case study **không** qua backend này: Frontend lấy qua Strapi REST
 
 ### 5.5. Nhập dữ liệu thử nghiệm vào SQLite
 
-Không có dữ liệu mẫu trong code. Điền dữ liệu thử nghiệm vào các file CSV
-trong `scripts/data/` của repo `BE_inventory` (hiện chỉ có dòng header), rồi chạy:
+Không có dữ liệu mẫu trong code — dữ liệu mẫu nằm trong các file CSV ở
+`scripts/data/` của repo `BE_inventory` (47 dòng, 8 file; số liệu theo
+trang mẫu AWING trên Figma, nhất quán với nhau: tổng venues của
+`provinces` và `venue_types` đều bằng 10.953). Nhập vào SQLite:
 
 ```bash
 cd BE_inventory
