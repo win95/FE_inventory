@@ -20,6 +20,9 @@
 # production
 /build
 
+# strapi build output (cms/ là project riêng)
+cms/dist
+
 # misc
 .DS_Store
 *.pem

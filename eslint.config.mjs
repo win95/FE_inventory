@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Strapi (cms/) là project riêng: bỏ qua output do Strapi sinh ra.
+    "cms/dist/**",
+    "cms/types/generated/**",
   ]),
 ]);
 
