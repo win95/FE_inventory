@@ -8,7 +8,7 @@ Strapi CMS + Docker Compose. Đọc hết mục 1 (trạng thái) trước khi c
 | Thành phần | Trạng thái | Ghi chú |
 |---|---|---|
 | Frontend Next.js (`~/workspace/new-project`, repo này) | ✅ Xong, đã push | 5 route: `/`, `/advertisers`, `/contact`, `/locations`, `/icon.svg`. `npm run lint` sạch, `npm run build` pass. |
-| Backend FastAPI + SQLite | ✅ Đã có code (`backend/`) | Chạy trên host theo mục 5. Chưa có dữ liệu thật trong SQLite — cần nhập dữ liệu thử nghiệm (mục 5.5) thì các khối mới hiện số. |
+| Backend FastAPI + SQLite | ✅ Đã có code (repo riêng `win95/BE_inventory`) | Chạy trên host theo mục 5. Chưa có dữ liệu thật trong SQLite — cần nhập dữ liệu thử nghiệm (mục 5.5) thì các khối mới hiện số. |
 | Strapi CMS + Postgres | ❌ Chưa dựng | Cần scaffold theo mục 4. Chưa có content type, chưa có bài viết nào. |
 | Dữ liệu SQLite / Strapi | ❌ Chưa có | Database rỗng → giao diện hiện trạng thái rỗng/lỗi rõ ràng, không tự điền số. Đây là hành vi đúng theo thiết kế, không phải lỗi. |
 
@@ -88,13 +88,14 @@ Nút đăng nhập Google đang disabled cho tới khi backend cấu hình xong 
 
 ## 5. Backend FastAPI + SQLite (chạy trên host, ngoài Compose)
 
-Code backend đã có trong repo, ở `backend/` (FastAPI + SQLite, chạy trên
-host, ngoài Compose). Khởi tạo và chạy:
+Code backend ở repo riêng `win95/BE_inventory` (FastAPI + SQLite, chạy trên
+host, ngoài Compose). Clone riêng rồi khởi tạo và chạy:
 
 ### 5.1. Khởi tạo
 
 ```bash
-cd backend
+git clone https://github.com/win95/BE_inventory.git
+cd BE_inventory
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -150,10 +151,10 @@ Case study **không** qua backend này: Frontend lấy qua Strapi REST
 ### 5.5. Nhập dữ liệu thử nghiệm vào SQLite
 
 Không có dữ liệu mẫu trong code. Điền dữ liệu thử nghiệm vào các file CSV
-trong `backend/scripts/data/` (hiện chỉ có dòng header), rồi chạy:
+trong `scripts/data/` của repo `BE_inventory` (hiện chỉ có dòng header), rồi chạy:
 
 ```bash
-cd backend
+cd BE_inventory
 python scripts/import_csv.py
 ```
 
