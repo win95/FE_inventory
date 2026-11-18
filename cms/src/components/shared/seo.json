@@ -1,0 +1,1 @@
+{"attributes":{"keywords":{"type":"text"},"metaDescription":{"type":"text"},"metaTitle":{"type":"string"},"ogImage":{"allowedTypes":["images"],"multiple":false,"required":false,"type":"media"}},"collectionName":"components_shared_seos","info":{"description":"Trường SEO cơ bản dùng chung cho Article, Case Study, Product và Home.","displayName":"SEO"}}

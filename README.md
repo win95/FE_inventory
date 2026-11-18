@@ -18,6 +18,8 @@ chức năng: xem Plan AWING 24 trang (`awing-plan-phan-tich-chuc-nang`).
 - **Chạy local:** `npm run dev` → http://localhost:3000 · `npm run build` · `npm run lint`
 - **Env:** copy `.env.example` sang `.env.local` khi có API thật
 - **Setup toàn bộ hệ thống (Frontend + FastAPI + Strapi + Docker Compose):** xem `SETUP.md`
+- **Strapi CMS:** `cms/` (Strapi 5, TypeScript) — Article, Case Study, Product, Home; chạy cùng Postgres + Frontend bằng `docker-compose.yml`
+- **Backend FastAPI:** repo riêng [win95/BE_inventory](https://github.com/win95/BE_inventory)
 
 ---
 

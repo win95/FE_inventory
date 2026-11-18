@@ -1,0 +1,70 @@
+# Docker Compose — Strapi + Postgres + Frontend (Plan §6).
+#
+# Chạy:  cp .env.example .env   (sửa các secret)  rồi  docker compose up --build -d
+# Dừng:  docker compose down
+#
+# FastAPI + SQLite KHÔNG nằm trong Compose — chạy riêng trên host (xem SETUP.md
+# mục 5, repo win95/BE_inventory). `docker compose up` thành công không có
+# nghĩa là FastAPI đang chạy, và ngược lại.
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-strapi}
+      POSTGRES_USER: ${POSTGRES_USER:-strapi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Đặt POSTGRES_PASSWORD trong .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-strapi} -d ${POSTGRES_DB:-strapi}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  strapi:
+    build: ./cms
+    restart: unless-stopped
+    environment:
+      DATABASE_CLIENT: postgres
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB:-strapi}
+      DATABASE_USERNAME: ${POSTGRES_USER:-strapi}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Đặt POSTGRES_PASSWORD trong .env}
+      APP_KEYS: ${APP_KEYS:?Đặt APP_KEYS trong .env}
+      API_TOKEN_SALT: ${API_TOKEN_SALT:?Đặt API_TOKEN_SALT trong .env}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:?Đặt ADMIN_JWT_SECRET trong .env}
+      TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT:?Đặt TRANSFER_TOKEN_SALT trong .env}
+      JWT_SECRET: ${JWT_SECRET:?Đặt JWT_SECRET trong .env}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Đặt ENCRYPTION_KEY trong .env}
+      HOST: 0.0.0.0
+      PORT: 1337
+      STRAPI_WEBHOOK_URL: ${STRAPI_WEBHOOK_URL:-http://host.docker.internal:8000/api/webhooks/strapi}
+    volumes:
+      - strapi-uploads:/opt/app/public/uploads
+    ports:
+      - "1337:1337"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      args:
+        # NEXT_PUBLIC_* nhúng vào bundle lúc build; phải là địa chỉ mà
+        # TRÌNH DUYỆT người dùng gọi được (localhost khi chạy local).
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+        NEXT_PUBLIC_STRAPI_URL: ${NEXT_PUBLIC_STRAPI_URL:-http://localhost:1337}
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - strapi
+
+volumes:
+  postgres-data:
+  strapi-uploads:

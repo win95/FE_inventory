@@ -164,126 +164,107 @@ và giao diện hiện trạng thái rỗng — là đúng theo thiết kế.
 
 ## 6. Strapi CMS + Postgres (trong Docker Compose)
 
-### 6.1. Scaffold project Strapi (làm một lần)
+Project Strapi đã có sẵn trong repo, ở `cms/` (Strapi 5.62, TypeScript,
+Postgres; đã cài thêm `better-sqlite3` để chạy thử nhanh bằng SQLite khi
+không có Postgres). File Compose đã có sẵn ở repo root (`docker-compose.yml`,
+gồm 3 service: postgres, strapi, frontend).
 
-```bash
-npx create-strapi-app@latest cms --typescript --dbclient postgres \
-  --dbhost localhost --dbport 5432 --dbname strapi \
-  --dbusername strapi --dbpassword 'doi-mat-khau-manh-o-day'
-cd cms
-```
-
-Chọn `--quickstart` (SQLite) chỉ để thử nhanh trên máy dev; production dùng
-Postgres theo lệnh trên. Trong quá trình scaffold, Strapi tạo tài khoản admin
-đầu tiên — giữ kỹ tài khoản này (đăng nhập tại `http://localhost:1337/admin`).
-
-### 6.2. Content types cần tạo (Content-Type Builder trong admin)
+### 6.1. Content types (đã khai sẵn trong code)
 
 | Loại | Kiểu | Trường chính |
 |---|---|---|
-| Article (blog) | Collection Type | title, slug, cover (media), content (rich text), category, SEO component (metaTitle, metaDescription, ogImage), publishedAt (Draft/Publish bật sẵn) |
-| CaseStudy | Collection Type | title, industry, metricLabel, metricValue, cover, summary |
-| Product | Collection Type | name, description, cover, link |
-| Home | Single Type | heroTitle, heroSubtitle, statsNote, howItWorks (component lặp: stepTitle, stepText) |
-| SEO (component dùng chung) | Component | metaTitle, metaDescription, keywords, ogImage |
+| Article (blog) | Collection Type | title, slug, cover (media), content (rich text), category, SEO component (metaTitle, metaDescription, keywords, ogImage) |
+| Case Study | Collection Type | title, industry, metricLabel, metricValue, cover, summary, SEO |
+| Product | Collection Type | name, slug, description, cover, link, SEO |
+| Home | Single Type | heroTitle, heroSubtitle, statsNote, howItWorks (component lặp: stepTitle, stepText), SEO |
 
-Bật **Draft & Publish** cho Article/CaseStudy/Product (bản nháp không lộ ra
-API public). Bật **i18n** nếu sau này cần đa ngôn ngữ VI/EN.
+Định nghĩa nằm trong `cms/src/api/<tên>/content-types/` và component dùng
+chung trong `cms/src/components/shared/` (`seo`, `how-it-works-step`).
+Tất cả đều bật **Draft & Publish**: chỉ bản published mới tới Frontend.
+Muốn thêm/sửa trường thì sửa file schema rồi khởi động lại Strapi (hoặc
+dùng Content-Type Builder trong admin — Strapi tự ghi lại file schema).
+Bật **i18n** nếu sau này cần đa ngôn ngữ VI/EN.
 
-### 6.3. Quyền API public (quan trọng, hay quên)
+### 6.2. Quyền API public và webhook — tự động qua bootstrap
 
-Vào **Settings → Users & Permissions → Roles → Public**, bật `find` và
-`findOne` cho Article, CaseStudy, Product, Home. Không bật `create/update/
-delete` cho Public. Chưa bật thì Frontend gọi Strapi sẽ nhận 403.
+Không cần bấm tay trong admin. `cms/src/index.ts` chạy mỗi lần Strapi khởi
+động:
 
-### 6.4. Webhook sang FastAPI
+- Cấp quyền `find`/`findOne` cho role Public trên cả 4 content type (chỉ
+  đọc, không ghi). Chưa có quyền thì Frontend gọi Strapi sẽ nhận 403.
+- Nếu có biến `STRAPI_WEBHOOK_URL` thì tạo webhook `awing-backend` (sự kiện
+  `entry.publish`, `entry.unpublish`, `entry.update`) để Strapi báo cho
+  backend FastAPI khi editor publish — backend đẩy sự kiện qua SSE để
+  Frontend fetch lại nội dung. Webhook chỉ mang tín hiệu "nội dung đổi rồi"
+  — Strapi vẫn là nguồn sự thật cho nội dung; FastAPI không lưu copy nội
+  dung. URL mặc định trong Compose:
+  `http://host.docker.internal:8000/api/webhooks/strapi` (Strapi trong
+  container gọi backend trên host qua `host.docker.internal`).
 
-Vào **Settings → Webhooks**, tạo webhook:
-
-- URL: `http://host.docker.internal:8000/api/webhooks/strapi`
-  (Strapi chạy trong container nên gọi backend trên host qua
-  `host.docker.internal`; nếu FastAPI cũng đưa vào Compose sau này thì đổi
-  thành tên service, ví dụ `http://fastapi:8000/...`).
-- Events: `Entry publish`, `Entry unpublish`, `Entry update`.
-- Webhook chỉ mang tín hiệu "nội dung đổi rồi" — Strapi vẫn là nguồn sự
-  thật cho nội dung; FastAPI không lưu copy nội dung.
-
-### 6.5. Chạy bằng Docker Compose
-
-Tạo `docker-compose.yml` ở thư mục chứa project `cms/` (cùng cấp với `cms/`),
-nội dung khung:
-
-```yaml
-services:
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_DB: strapi
-      POSTGRES_USER: strapi
-      POSTGRES_PASSWORD: doi-mat-khau-manh-o-day
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-
-  strapi:
-    build: ./cms
-    environment:
-      DATABASE_CLIENT: postgres
-      DATABASE_HOST: postgres
-      DATABASE_PORT: 5432
-      DATABASE_NAME: strapi
-      DATABASE_USERNAME: strapi
-      DATABASE_PASSWORD: doi-mat-khau-manh-o-day
-      APP_KEYS: khoa-1,khoa-2,khoa-3,khoa-4
-      API_TOKEN_SALT: doi-salt
-      ADMIN_JWT_SECRET: doi-secret
-      JWT_SECRET: doi-secret
-      NODE_ENV: production
-    volumes:
-      - strapi-uploads:/opt/app/public/uploads
-    ports:
-      - "1337:1337"
-    depends_on:
-      - postgres
-
-volumes:
-  postgres-data:
-  strapi-uploads:
-```
-
-Kèm `cms/Dockerfile` build project Strapi (Node 22/24, `npm install` rồi
-`npm run build`, chạy `npm run start`). Lần đầu chạy:
+### 6.3. Chạy bằng Docker Compose
 
 ```bash
+cp .env.example .env   # sửa các secret trong .env trước khi chạy thật
 docker compose up --build -d
 docker compose logs -f strapi   # xem log tới khi Strapi báo sẵn sàng
 ```
 
-Admin: `http://localhost:1337/admin`. **Backup:** volume `postgres-data`
-(database) và `strapi-uploads` (ảnh upload) — backup cả hai trước khi nâng
+Lần đầu mở admin (`http://localhost:1337/admin`), tạo tài khoản admin đầu
+tiên trên giao diện — giữ kỹ tài khoản này. Sau đó vào admin tạo nội dung
+(Article / Case Study / Product / Home) và bấm Publish.
+
+**Backup:** volume `postgres-data` (database) và `strapi-uploads` (ảnh
+upload) — backup cả hai trước khi nâng cấp Strapi hay sửa Compose.
+
+Lưu ý: máy dựng (VM này) không có Docker nên chưa chạy được `docker compose
+up` tại đây. Đã kiểm chứng thay bằng SQLite: Strapi khởi động được, 4 API
+trả 200 với dữ liệu rỗng (không 403), bootstrap cấp đủ 8 quyền public và
+tạo đúng webhook `awing-backend`; Frontend build standalone chạy được
+(`node .next/standalone/server.js`, 3 route trả 200); file Compose kiểm tra
+cú pháp YAML hợp lệ. Lần chạy Compose thật đầu tiên vẫn cần kiểm tra lại
+trên máy có Docker.
+
+### 6.4. Chạy Strapi trực tiếp trên host (không dùng Compose)
+
+Cần Postgres đang chạy, hoặc SQLite để thử nhanh:
+
+```bash
+cd cms
+npm install
+cp .env.example .env   # sửa secret khi cần
+npm run develop        # http://localhost:1337/admin
+
+# Thử nhanh bằng SQLite (không cần Postgres):
+DATABASE_CLIENT=sqlite DATABASE_FILENAME=.tmp/data.db npm run develop
+```
 cấp Strapi hay sửa Compose.
 
 ## 7. Thứ tự chạy toàn bộ (checklist)
 
-1. `docker compose up -d` — Postgres + Strapi lên trước. Mở
-   `http://localhost:1337/admin`, đăng nhập, tạo content types (mục 6.2),
-   bật quyền Public (mục 6.3), tạo webhook (mục 6.4), đăng 1 bài Article
-   và bấm Publish thử.
-2. Chạy FastAPI trên host (mục 5.2). Kiểm tra nhanh:
+1. `cp .env.example .env` (sửa secret) rồi `docker compose up --build -d`
+   — Postgres + Strapi + Frontend lên cùng lúc. Content types, quyền Public
+   và webhook đã có sẵn trong code (mục 6.1–6.2), không cần tạo tay. Mở
+   `http://localhost:1337/admin`, tạo tài khoản admin đầu tiên, đăng 1 bài
+   Article và 1 Case Study rồi bấm Publish thử.
+2. Chạy FastAPI trên host từ repo `BE_inventory` (mục 5.2). Kiểm tra nhanh:
    ```bash
    curl http://localhost:8000/api/network-stats
    curl http://localhost:8000/api/coverage
+   curl http://localhost:1337/api/case-studies
    ```
-   Chưa có dữ liệu thì hai endpoint trả `null` / mảng rỗng — là đúng.
-3. Chạy Frontend (mục 4). Mở `http://localhost:3000`:
+   Chưa có dữ liệu thì các endpoint trả `null` / mảng rỗng — là đúng.
+   Strapi trả 403 ở bước này nghĩa là bootstrap chưa cấp quyền (xem log
+   Strapi: `docker compose logs strapi`).
+3. Mở `http://localhost:3000` (Frontend trong Compose):
    - Chưa có dữ liệu: trang chủ hiện empty state ở dải số liệu và heatmap,
      không có số liệu bịa.
    - Có dữ liệu trong SQLite: số liệu + heatmap hiện; đổi dữ liệu trong
      SQLite thì số liệu tự cập nhật trong vòng 1 phút (SSE/polling).
    - Nội dung Strapi đã Publish: case study hiện ở `/advertisers`.
 4. Thử luồng realtime: sửa một con số trong SQLite, xem dải số liệu ở trang
-   chủ đổi trong vòng ~1 phút mà không cần reload.
+   chủ đổi trong vòng ~1 phút mà không cần reload. Thử luồng publish:
+   Publish một Case Study mới trên Strapi, xem lưới case study ở
+   `/advertisers` đổi sau khi Frontend fetch lại (không cần deploy lại).
 
 ## 8. Xử lý sự cố thường gặp
 

@@ -1,0 +1,81 @@
+import type { Core } from '@strapi/strapi';
+
+// Các action public mà Frontend cần: chỉ đọc bản published, không ghi.
+// Quyền này được cấp tự động mỗi lần Strapi khởi động (idempotent) để khỏi
+// phải bấm tay trong admin sau mỗi lần dựng lại database.
+const PUBLIC_ACTIONS = [
+  'api::article.article.find',
+  'api::article.article.findOne',
+  'api::case-study.case-study.find',
+  'api::case-study.case-study.findOne',
+  'api::product.product.find',
+  'api::product.product.findOne',
+  'api::home.home.find',
+  'api::home.home.findOne',
+];
+
+const WEBHOOK_EVENTS = ['entry.publish', 'entry.unpublish', 'entry.update'];
+
+async function grantPublicPermissions(strapi: Core.Strapi) {
+  const role = await strapi.db
+    .query('plugin::users-permissions.role')
+    .findOne({ where: { type: 'public' } });
+  if (!role) {
+    strapi.log.warn('[bootstrap] Không tìm thấy role public — bỏ qua cấp quyền.');
+    return;
+  }
+  const existing = await strapi.db
+    .query('plugin::users-permissions.permission')
+    .findMany({ where: { role: role.id } });
+  const granted = new Set(existing.map((p: { action: string }) => p.action));
+  for (const action of PUBLIC_ACTIONS) {
+    if (!granted.has(action)) {
+      await strapi.db.query('plugin::users-permissions.permission').create({
+        data: { action, role: role.id },
+      });
+      strapi.log.info(`[bootstrap] Đã cấp quyền public: ${action}`);
+    }
+  }
+}
+
+async function ensureStrapiWebhook(strapi: Core.Strapi) {
+  const url = process.env.STRAPI_WEBHOOK_URL;
+  if (!url) {
+    return;
+  }
+  // UID đúng của Strapi 5 là 'strapi::webhook' (xem @strapi/core webhook-store).
+  const existing = await strapi.db
+    .query('strapi::webhook')
+    .findMany({ where: { url } });
+  if (existing.length > 0) {
+    return;
+  }
+  await strapi.db.query('strapi::webhook').create({
+    data: {
+      name: 'awing-backend',
+      url,
+      headers: {},
+      events: WEBHOOK_EVENTS,
+      enabled: true,
+    },
+  });
+  strapi.log.info(`[bootstrap] Đã tạo webhook tới backend: ${url}`);
+}
+
+export default {
+  register() {},
+
+  async bootstrap({ strapi }: { strapi: Core.Strapi }) {
+    // Bootstrap không được làm sập server: lỗi ở đây chỉ ghi log.
+    try {
+      await grantPublicPermissions(strapi);
+    } catch (error) {
+      strapi.log.error('[bootstrap] Không cấp được quyền public:', error);
+    }
+    try {
+      await ensureStrapiWebhook(strapi);
+    } catch (error) {
+      strapi.log.error('[bootstrap] Không tạo được webhook:', error);
+    }
+  },
+};
