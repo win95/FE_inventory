@@ -1,7 +1,12 @@
 import type { AdFormat, CaseStudy, SuggestedLocation } from "@/lib/types";
 
-// Thẻ hiển thị thuần cho trang kết quả (F06–F09): chỉ nhận dữ liệu từ API,
+// Thẻ hiển thị cho trang kết quả (F06–F09): chỉ nhận dữ liệu từ API,
 // không tự chứa số liệu. metricValue null thì hiển thị "—" chứ không bịa số.
+//
+// Theo hành vi click trên Figma (~14:03 +07, 18/11):
+// - Thẻ địa điểm chỉ hiển thị, không bấm được.
+// - Thẻ ad format bấm vào mở popup xem trước trên điện thoại.
+// - Thẻ case study bấm vào mở popup yêu cầu tài khoản advertiser.
 export function LocationCard({ location }: { location: SuggestedLocation }) {
   return (
     <article className="rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
@@ -19,9 +24,19 @@ export function LocationCard({ location }: { location: SuggestedLocation }) {
   );
 }
 
-export function AdFormatCard({ format }: { format: AdFormat }) {
+export function AdFormatCard({
+  format,
+  onPreview,
+}: {
+  format: AdFormat;
+  onPreview: () => void;
+}) {
   return (
-    <article className="rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
+    <button
+      type="button"
+      onClick={onPreview}
+      className="rounded-2xl border border-zinc-200 p-5 text-left hover:border-red-600 dark:border-zinc-800 dark:hover:border-red-500"
+    >
       <h3 className="font-semibold text-zinc-900 dark:text-zinc-50">{format.name}</h3>
       <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">
         {format.metricLabel}:{" "}
@@ -29,13 +44,24 @@ export function AdFormatCard({ format }: { format: AdFormat }) {
           {format.metricValue === null ? "—" : `${format.metricValue}%`}
         </span>
       </p>
-    </article>
+      <p className="mt-3 text-sm font-medium text-red-600">Xem trước →</p>
+    </button>
   );
 }
 
-export function CaseStudyCard({ study }: { study: CaseStudy }) {
+export function CaseStudyCard({
+  study,
+  onRequestAccess,
+}: {
+  study: CaseStudy;
+  onRequestAccess: () => void;
+}) {
   return (
-    <article className="rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
+    <button
+      type="button"
+      onClick={onRequestAccess}
+      className="rounded-2xl border border-zinc-200 p-5 text-left hover:border-red-600 dark:border-zinc-800 dark:hover:border-red-500"
+    >
       <p className="text-xs font-semibold tracking-widest text-red-600 uppercase">{study.industry}</p>
       <h3 className="mt-2 font-semibold text-zinc-900 dark:text-zinc-50">{study.title}</h3>
       <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">
@@ -44,6 +70,7 @@ export function CaseStudyCard({ study }: { study: CaseStudy }) {
           {study.metricValue === null ? "—" : `${study.metricValue}%`}
         </span>
       </p>
-    </article>
+      <p className="mt-3 text-sm font-medium text-red-600">Xem case study đầy đủ →</p>
+    </button>
   );
 }

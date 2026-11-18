@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { ApiError, fetchNetworkStats, subscribeNetworkStats } from "@/lib/api";
 import type { LoadState, NetworkStats } from "@/lib/types";
 
@@ -109,6 +110,9 @@ export default function StatsStrip() {
       <p className="mt-3 text-xs text-zinc-400">
         Số liệu cập nhật theo thời gian thực từ backend (trễ tối đa 1 phút).
       </p>
+      <Link href="/locations" className="mt-4 inline-block rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:border-zinc-500 dark:border-zinc-700 dark:text-zinc-200">
+        Explore Location Network →
+      </Link>
     </section>
   );
 }

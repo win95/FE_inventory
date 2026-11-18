@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { ApiError, fetchCoverage } from "@/lib/api";
 import type { CoverageLevel, CoverageResponse, LoadState } from "@/lib/types";
 
@@ -16,7 +17,7 @@ const LEVEL_STYLE: Record<CoverageLevel, { label: string; bar: string; text: str
   high: { label: "Cao", bar: "bg-red-600", text: "text-red-700 dark:text-red-400" },
 };
 
-export default function LocationIntelligence() {
+export default function LocationIntelligence({ showExploreLink = true }: { showExploreLink?: boolean }) {
   const [state, setState] = useState<LoadState<CoverageResponse>>({ status: "loading" });
 
   useEffect(() => {
@@ -65,6 +66,12 @@ export default function LocationIntelligence() {
             Thêm tỉnh/thành và số điểm theo loại venue vào SQLite thì bản đồ nhiệt sẽ hiện ở đây.
           </p>
         </div>
+      )}
+
+      {showExploreLink && (
+        <Link href="/locations" className="mt-6 inline-block rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:border-zinc-500 dark:border-zinc-700 dark:text-zinc-200">
+          Explore Full Location Network →
+        </Link>
       )}
 
       {state.status === "error" && (
