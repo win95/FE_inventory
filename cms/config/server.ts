@@ -9,6 +9,13 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Server =>
   webhooks: {
     populateRelations: env.bool('WEBHOOKS_POPULATE_RELATIONS', false),
   },
+  // MCP server tích hợp sẵn của Strapi (từ 5.47, GA 5.49): endpoint
+  // POST /mcp, xác thực bằng admin API token, tool tự sinh theo từng
+  // content type (Article, Case Study, Product, Home). Mặc định bật;
+  // đặt STRAPI_MCP_ENABLED=false để tắt mà không cần sửa code.
+  mcp: {
+    enabled: env.bool('STRAPI_MCP_ENABLED', true),
+  },
 });
 
 export default config;

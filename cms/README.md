@@ -46,6 +46,18 @@ Tất cả đều bật Draft/Publish: chỉ bản published mới tới Fronten
   backend FastAPI khi editor publish — backend đẩy sự kiện qua SSE để
   Frontend fetch lại nội dung.
 
+## MCP server tích hợp sẵn (Strapi 5.47+, GA 5.49)
+
+Đã bật trong `config/server.ts` (`mcp.enabled`, mặc định bật; đặt
+`STRAPI_MCP_ENABLED=false` để tắt). Endpoint `POST /mcp`, xác thực bằng
+admin API token (`Authorization: Bearer <token>`). Tool tự sinh theo từng
+content type (Article, Case Study, Product, Home) nên agent có thể đọc/ghi
+nội dung CMS qua MCP.
+
+Tạo token trong Strapi admin: Settings → Global settings → API Tokens →
+Create new API Token — token chỉ hiện một lần lúc tạo, lưu kỹ. Chưa có
+token thì mọi request tới `/mcp` đều trả 401 `Authentication required`.
+
 ## Biến môi trường
 
 Xem `.env.example`. Database mặc định là Postgres (qua Compose); để thử

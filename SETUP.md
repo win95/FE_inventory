@@ -253,6 +253,22 @@ npm install --no-save better-sqlite3
 DATABASE_CLIENT=sqlite DATABASE_FILENAME=.tmp/data.db npm run develop
 ```
 
+### 6.5. MCP server tích hợp sẵn (Strapi 5.47+, GA 5.49)
+
+Strapi có sẵn MCP server, đã bật trong `cms/config/server.ts`
+(`mcp.enabled`, mặc định bật; đặt `STRAPI_MCP_ENABLED=false` để tắt).
+Endpoint: `POST http://localhost:1337/mcp` (chỉ nhận POST — GET trả 405),
+xác thực bằng admin API token (`Authorization: Bearer <token>`). Tool tự
+sinh theo từng content type (Article, Case Study, Product, Home) nên agent
+có thể đọc/ghi nội dung CMS qua MCP thay vì chỉ gọi REST.
+
+Tạo token trong Strapi admin: Settings → Global settings → API Tokens →
+Create new API Token (chọn Full access hoặc giới hạn theo nhu cầu) — token
+chỉ hiện một lần lúc tạo, lưu kỹ. Chưa có token thì mọi request tới `/mcp`
+đều trả 401 `Authentication required` (đã kiểm chứng: Strapi khởi động
+báo `[MCP] Server available at /mcp`; POST không token và POST token sai
+đều 401; GET 405).
+
 ## 7. Thứ tự chạy toàn bộ (checklist)
 
 1. `cp .env.example .env` (sửa secret) rồi `docker compose up --build -d`
