@@ -176,9 +176,11 @@ và giao diện hiện trạng thái rỗng — là đúng theo thiết kế.
 ## 6. Strapi CMS + Postgres (trong Docker Compose)
 
 Project Strapi đã có sẵn trong repo, ở `cms/` (Strapi 5.62, TypeScript,
-Postgres; đã cài thêm `better-sqlite3` để chạy thử nhanh bằng SQLite khi
-không có Postgres). File Compose đã có sẵn ở repo root (`docker-compose.yml`,
-gồm 3 service: postgres, strapi, frontend).
+Postgres). File Compose đã có sẵn ở repo root (`docker-compose.yml`,
+gồm 3 service: postgres, strapi, frontend). `better-sqlite3` không nằm
+trong `package.json` — image Docker không build native module này (trong
+Compose Strapi dùng Postgres); chỉ khi chạy thử bằng SQLite trên host mới
+cần cài tay (mục 6.4).
 
 ### 6.1. Content types (đã khai sẵn trong code)
 
@@ -245,7 +247,9 @@ npm install
 cp .env.example .env   # sửa secret khi cần
 npm run develop        # http://localhost:1337/admin
 
-# Thử nhanh bằng SQLite (không cần Postgres):
+# Thử nhanh bằng SQLite (không cần Postgres) — cài better-sqlite3 tay trước
+# vì nó không nằm trong package.json (để image Docker không phải build native):
+npm install --no-save better-sqlite3
 DATABASE_CLIENT=sqlite DATABASE_FILENAME=.tmp/data.db npm run develop
 ```
 

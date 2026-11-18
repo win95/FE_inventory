@@ -49,8 +49,11 @@ Tất cả đều bật Draft/Publish: chỉ bản published mới tới Fronten
 ## Biến môi trường
 
 Xem `.env.example`. Database mặc định là Postgres (qua Compose); để thử
-nhanh trên host có thể dùng SQLite:
+nhanh trên host có thể dùng SQLite — nhưng `better-sqlite3` không nằm trong
+`package.json` (để image Docker không phải build native module), nên cài
+tay trước khi chạy SQLite:
 
 ```bash
+npm install --no-save better-sqlite3
 DATABASE_CLIENT=sqlite DATABASE_FILENAME=.tmp/data.db npm run develop
 ```
