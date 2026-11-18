@@ -79,12 +79,18 @@ export async function fetchCoverage(locale: Locale = "vi"): Promise<CoverageResp
   return requestJson<CoverageResponse | null>(`/api/coverage?locale=${locale}`, undefined, locale);
 }
 
-export async function fetchSuggest(prompt: string, locale: Locale = "vi"): Promise<SuggestResponse> {
+export async function fetchSuggest(
+  prompt: string,
+  locale: Locale = "vi",
+  options: { logPrompt?: boolean } = {},
+): Promise<SuggestResponse> {
   return requestJson<SuggestResponse>(
     "/api/suggest",
     {
       method: "POST",
-      body: JSON.stringify({ prompt, locale }),
+      // Refresh số liệu realtime thì logPrompt: false để khỏi ghi trùng prompt
+      // vào prompt_logs của backend (xem SuggestRequest.logPrompt).
+      body: JSON.stringify({ prompt, locale, logPrompt: options.logPrompt ?? true }),
     },
     locale,
   );

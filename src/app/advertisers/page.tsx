@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ApiError, fetchCaseStudies, fetchSuggest, isEmptySuggest } from "@/lib/api";
+import { ApiError, fetchCaseStudies, fetchSuggest, isEmptySuggest, subscribeNetworkStats } from "@/lib/api";
 import type { AdFormat, CaseStudy, LoadState, SuggestResponse } from "@/lib/types";
 import { AdFormatCard, CaseStudyCard } from "@/components/ResultCards";
 import AdvertiserAuthModal from "@/components/AdvertiserAuthModal";
@@ -111,10 +111,16 @@ function AdvertisersContent({ prompt }: { prompt: string }) {
           setState({ status: "ready", data });
           if (data.cities) {
             // Mặc định chọn top 3 theo monthly engagements (đúng Figma).
+            // Chỉ khởi tạo một lần cho prompt này: đổi locale hoặc refresh
+            // số liệu realtime gọi lại fetch thì GIỮ NGUYÊN lựa chọn của
+            // người dùng, không reset về top 3.
             const ranked = [...data.cities]
               .filter((c) => c.monthlyEngagements !== null && c.monthlyEngagements !== undefined)
               .sort((a, b) => (b.monthlyEngagements ?? 0) - (a.monthlyEngagements ?? 0));
-            setSelectedCities(new Set(ranked.slice(0, 3).map((c) => c.name)));
+            setSelectedCities((prev) => {
+              if (prev !== null) return prev;
+              return new Set(ranked.slice(0, 3).map((c) => c.name));
+            });
           }
         }
       })
@@ -137,6 +143,29 @@ function AdvertisersContent({ prompt }: { prompt: string }) {
       cancelled = true;
     };
   }, [prompt, hasPrompt, locale, t]);
+
+  // Số liệu tăng dần theo thời gian thực: mỗi khi backend đẩy snapshot SSE
+  // mới (mỗi chu kỳ 30s, số vừa được cộng dồn trong DB), gọi lại /api/suggest
+  // để lấy số thành phố mới — 3 ô tổng + số trên chip tự nhảy theo, lựa chọn
+  // chip của người dùng được giữ nguyên (không reset về top 3). Lần gọi lại
+  // gửi logPrompt: false nên không ghi trùng prompt vào prompt_logs.
+  useEffect(() => {
+    if (!hasPrompt || state.status !== "ready") return;
+    const unsubscribe = subscribeNetworkStats(
+      () => {
+        fetchSuggest(prompt, locale, { logPrompt: false })
+          .then((data) => {
+            if (!isEmptySuggest(data)) setState({ status: "ready", data });
+          })
+          .catch(() => {
+            // Refresh lỗi thì giữ số cũ, kỳ SSE sau thử lại.
+          });
+      },
+      () => {},
+      locale,
+    );
+    return unsubscribe;
+  }, [prompt, hasPrompt, locale, state.status]);
 
   const cityTotals = useMemo(() => {
     if (state.status !== "ready" || !state.data.cities || !selectedCities) return null;

@@ -153,6 +153,18 @@ Case study **không** qua backend này: Frontend lấy qua Strapi REST
   liệu chưa đổi.
 - Mất SSE thì Frontend tự chuyển sang polling `GET /api/network-stats`
   mỗi 60 giây.
+- **Số liệu tăng dần theo thời gian thực (tran 18/11/2026):** trước khi đẩy
+  snapshot mỗi kỳ, backend cộng dồn số liệu vào SQLite (`app/growth.py`) —
+  Lượt kết nối +100.000/kỳ mặc định (`GROWTH_CONNECTIONS_PER_CYCLE`), reach /
+  engagements / impressions/ngày / monthly tăng theo cùng tỉ lệ % so với
+  tổng hiện tại, chia theo tỉ trọng từng thành phố. Số được lưu lại nên
+  restart backend vẫn tiếp tục tăng; cột NULL giữ NULL (Vũng Tàu/Huế không
+  tự sinh số). Đây là số tăng tổng hợp cho dữ liệu mẫu — khi có nguồn số
+  liệu thật thì tắt bằng `GROWTH_ENABLED=false`. Frontend nhận số mới qua
+  SSE: dải số liệu ở home cập nhật trực tiếp từ snapshot; /advertisers và
+  /locations gọi lại API khi có snapshot mới (lần gọi lại gửi
+  `logPrompt: false` nên không ghi trùng vào `prompt_logs`), lựa chọn chip
+  thành phố và bộ lọc thư mục được giữ nguyên khi refresh.
 - Webhook từ Strapi (khi editor Publish) không đi qua vòng lặp 30 giây:
   FastAPI nhận webhook rồi đẩy ngay một sự kiện `content-updated` qua SSE
   để Frontend fetch lại nội dung từ Strapi.

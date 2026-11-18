@@ -12,7 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ApiError, fetchCoverage, fetchNetworkStats } from "@/lib/api";
+import { ApiError, fetchCoverage, fetchNetworkStats, subscribeNetworkStats } from "@/lib/api";
 import type { CoverageResponse, NetworkStats } from "@/lib/types";
 import HeatmapCard from "@/components/HeatmapCard";
 import AdvertiserAuthModal from "@/components/AdvertiserAuthModal";
@@ -167,6 +167,32 @@ export default function LocationsPage() {
       cancelled = true;
     };
   }, [locale, t]);
+
+  // Số liệu tăng dần theo thời gian thực: mỗi khi backend đẩy snapshot SSE
+  // mới (mỗi chu kỳ 30s, số vừa được cộng dồn trong DB), gọi lại API để dải
+  // số liệu + biểu đồ theo thành phố nhảy theo. Bộ lọc thư mục (category)
+  // là state riêng nên không bị reset.
+  useEffect(() => {
+    if (state.status !== "ready") return;
+    const unsubscribe = subscribeNetworkStats(
+      () => {
+        Promise.all([fetchNetworkStats(), fetchCoverage(locale)])
+          .then(([stats, coverage]) => {
+            setState((prev) =>
+              prev.status === "ready"
+                ? { status: "ready", stats, coverage: coverage ?? prev.coverage }
+                : prev,
+            );
+          })
+          .catch(() => {
+            // Refresh lỗi thì giữ số cũ, kỳ SSE sau thử lại.
+          });
+      },
+      () => {},
+      locale,
+    );
+    return unsubscribe;
+  }, [locale, state.status]);
 
   const categories = useMemo(() => {
     if (state.status !== "ready" || !state.coverage.directory) return [];
