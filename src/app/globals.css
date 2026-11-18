@@ -1,26 +1,39 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* Design tokens đo trực tiếp trên trang mẫu Figma
+   (plank-metal-22306544.figma.site, 18/11/2026, viewport 1919px):
+   - Nền trang #F4F4F7, chữ #0D0D14, chữ phụ #6B6B80
+   - Đỏ thương hiệu #E8212B (nhất quán mọi nút/link/số đỏ)
+   - Font: Inter (nội dung) + Barlow Condensed Black (tiêu đề lớn)
+   - Figma không có dark mode nên toàn site chỉ dùng bảng màu sáng này. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-page: #f4f4f7;
+  --color-ink: #0d0d14;
+  --color-muted: #6b6b80;
+  --color-brand: #e8212b;
+  --color-brand-dark: #d31f27;
+  --color-card: #ffffff;
+  --color-border: #ebebeb;
+  --color-divider: #eaeaea;
+  --color-outline: #e0e0e3;
+  --color-badge-bg: #f3e4e7;
+  --color-badge-border: #efb2b7;
+  --color-tile: #fce7e8;
+  --color-tile-soft: #fde8e9;
+  --color-chip-bg: #f3dee2;
+  --color-chip-border: #ef9299;
+  --color-stepnum: #dadadf;
+  --color-heat-1: #fad3d5;
+  --color-heat-2: #f6a6aa;
+  --color-heat-3: #f17a80;
+  --color-heat-4: #ed4d55;
+  --color-heat-5: #e8212b;
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-barlow-condensed);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-page);
+  color: var(--color-ink);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }

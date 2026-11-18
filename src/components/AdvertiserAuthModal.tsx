@@ -35,21 +35,21 @@ export default function AdvertiserAuthModal({
       aria-label={title}
     >
       <div
-        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
+        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold tracking-widest text-red-600 uppercase">
+            <p className="text-xs font-semibold tracking-widest text-brand uppercase">
               Advertiser account required
             </p>
-            <h2 className="mt-2 text-lg font-bold text-zinc-900 dark:text-zinc-50">{title}</h2>
+            <h2 className="mt-2 text-lg font-bold text-ink">{title}</h2>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Đóng"
-            className="rounded-full px-2 py-1 text-xl leading-none text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            className="rounded-lg px-2 py-1 text-xl leading-none text-muted hover:bg-border"
           >
             ×
           </button>
@@ -66,10 +66,10 @@ export default function AdvertiserAuthModal({
                 setMode(m);
                 setNotice("");
               }}
-              className={`rounded-full px-4 py-2 text-sm font-medium ${
+              className={`rounded-lg px-4 py-2 text-sm font-medium ${
                 mode === m
-                  ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
-                  : "border border-zinc-300 text-zinc-600 hover:border-zinc-500 dark:border-zinc-700 dark:text-zinc-300"
+                  ? "bg-ink text-white"
+                  : "border border-outline text-muted hover:border-muted"
               }`}
             >
               {m === "signin" ? "Sign In" : "Register"}
@@ -79,7 +79,7 @@ export default function AdvertiserAuthModal({
 
         <form onSubmit={submit} className="mt-4 grid gap-3">
           <div>
-            <label htmlFor="adv-email" className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+            <label htmlFor="adv-email" className="text-sm font-medium text-ink">
               Email *
             </label>
             <input
@@ -88,11 +88,11 @@ export default function AdvertiserAuthModal({
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
-              className="mt-1 h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-zinc-900 outline-none focus:border-red-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              className="mt-1 h-11 w-full rounded-lg border border-outline bg-white px-3 text-ink outline-none focus:border-brand"
             />
           </div>
           <div>
-            <label htmlFor="adv-password" className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+            <label htmlFor="adv-password" className="text-sm font-medium text-ink">
               Password *
             </label>
             <input
@@ -101,17 +101,17 @@ export default function AdvertiserAuthModal({
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
-              className="mt-1 h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-zinc-900 outline-none focus:border-red-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              className="mt-1 h-11 w-full rounded-lg border border-outline bg-white px-3 text-ink outline-none focus:border-brand"
             />
           </div>
           {notice && (
-            <p role="alert" className="text-sm text-amber-700 dark:text-amber-400">
+            <p role="alert" className="text-sm text-amber-700">
               {notice}
             </p>
           )}
           <button
             type="submit"
-            className="h-11 rounded-full bg-red-600 font-semibold text-white hover:bg-red-700"
+            className="h-11 rounded-lg bg-brand font-semibold text-white hover:bg-brand-dark"
           >
             {mode === "signin" ? "Sign In" : "Register"}
           </button>

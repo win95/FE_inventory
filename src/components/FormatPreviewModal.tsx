@@ -22,28 +22,28 @@ export default function FormatPreviewModal({
       aria-label={`Xem trước ${format.name}`}
     >
       <div
-        className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
+        className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
-          <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{format.name}</h2>
+          <h2 className="text-lg font-bold text-ink">{format.name}</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Đóng"
-            className="rounded-full px-2 py-1 text-xl leading-none text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            className="rounded-lg px-2 py-1 text-xl leading-none text-muted hover:bg-border"
           >
             ×
           </button>
         </div>
 
-        <div className="mx-auto mt-4 w-48 rounded-[2rem] border-4 border-zinc-900 bg-zinc-950 p-4 text-center dark:border-zinc-700">
-          <p className="text-xs font-semibold tracking-widest text-zinc-400 uppercase">Preview</p>
+        <div className="mx-auto mt-4 w-48 rounded-[2rem] border-4 border-ink bg-ink p-4 text-center">
+          <p className="text-xs font-semibold tracking-widest text-muted uppercase">Preview</p>
           <p className="mt-3 text-lg font-bold text-white">{format.name}</p>
           {format.durationSeconds !== null && format.durationSeconds !== undefined && (
-            <p className="mt-1 text-sm text-zinc-300">{format.durationSeconds}s</p>
+            <p className="mt-1 text-sm text-white/70">{format.durationSeconds}s</p>
           )}
-          <p className="mt-3 text-sm text-zinc-300">
+          <p className="mt-3 text-sm text-white/70">
             {format.metricLabel}:{" "}
             <span className="font-semibold text-white">
               {format.metricValue === null ? "—" : `${format.metricValue}%`}
@@ -53,7 +53,7 @@ export default function FormatPreviewModal({
 
         <Link
           href="/contact"
-          className="mt-5 block rounded-full bg-red-600 py-2.5 text-center text-sm font-semibold text-white hover:bg-red-700"
+          className="mt-5 block rounded-lg bg-brand py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
         >
           Liên hệ để triển khai →
         </Link>

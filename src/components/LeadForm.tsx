@@ -33,10 +33,10 @@ export default function LeadForm() {
 
   if (status === "sent") {
     return (
-      <section aria-label="Lead form" className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-        <div className="rounded-2xl border border-green-200 bg-green-50 p-6 dark:border-green-900 dark:bg-green-950/40">
-          <p className="font-semibold text-green-700 dark:text-green-300">Đã nhận thông tin của bạn.</p>
-          <p className="mt-1 text-sm text-green-600 dark:text-green-400">
+      <section aria-label="Lead form" className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+        <div className="rounded-2xl border border-green-200 bg-green-50 p-6">
+          <p className="font-semibold text-green-700">Đã nhận thông tin của bạn.</p>
+          <p className="mt-1 text-sm text-green-600">
             Chúng tôi sẽ liên hệ lại sớm. Cảm ơn bạn đã quan tâm tới AWING.
           </p>
         </div>
@@ -45,39 +45,39 @@ export default function LeadForm() {
   }
 
   return (
-    <section aria-label="Lead form" className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-      <h2 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
+    <section aria-label="Lead form" className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+      <h2 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
         Để lại thông tin — chúng tôi liên hệ lại
       </h2>
-      <p className="mt-2 max-w-2xl text-zinc-600 dark:text-zinc-400">
+      <p className="mt-2 max-w-2xl text-muted">
         Dành cho nhà quảng cáo, chủ sở hữu Wi-Fi và đối tác muốn hợp tác.
       </p>
       <form onSubmit={submit} className="mt-6 grid max-w-2xl gap-4">
         <div>
-          <label htmlFor="lead-name" className="text-sm font-medium text-zinc-700 dark:text-zinc-200">Họ tên *</label>
+          <label htmlFor="lead-name" className="text-sm font-medium text-ink">Họ tên *</label>
           <input id="lead-name" type="text" value={name} onChange={(e) => setName(e.target.value)} required
-            className="mt-1 h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-zinc-900 outline-none focus:border-red-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50" />
+            className="mt-1 h-11 w-full rounded-lg border border-outline bg-white px-3 text-ink outline-none focus:border-brand" />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="lead-email" className="text-sm font-medium text-zinc-700 dark:text-zinc-200">Email *</label>
+            <label htmlFor="lead-email" className="text-sm font-medium text-ink">Email *</label>
             <input id="lead-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-              className="mt-1 h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-zinc-900 outline-none focus:border-red-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50" />
+              className="mt-1 h-11 w-full rounded-lg border border-outline bg-white px-3 text-ink outline-none focus:border-brand" />
           </div>
           <div>
-            <label htmlFor="lead-phone" className="text-sm font-medium text-zinc-700 dark:text-zinc-200">Số điện thoại *</label>
+            <label htmlFor="lead-phone" className="text-sm font-medium text-ink">Số điện thoại *</label>
             <input id="lead-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required
-              className="mt-1 h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-zinc-900 outline-none focus:border-red-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50" />
+              className="mt-1 h-11 w-full rounded-lg border border-outline bg-white px-3 text-ink outline-none focus:border-brand" />
           </div>
         </div>
         <div>
-          <label htmlFor="lead-message" className="text-sm font-medium text-zinc-700 dark:text-zinc-200">Tin nhắn *</label>
+          <label htmlFor="lead-message" className="text-sm font-medium text-ink">Tin nhắn *</label>
           <textarea id="lead-message" value={message} onChange={(e) => setMessage(e.target.value)} required rows={4}
-            className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-red-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50" />
+            className="mt-1 w-full rounded-lg border border-outline bg-white px-3 py-2 text-ink outline-none focus:border-brand" />
         </div>
-        {status === "error" && <p role="alert" className="text-sm text-red-600">{error}</p>}
+        {status === "error" && <p role="alert" className="text-sm text-brand">{error}</p>}
         <button type="submit" disabled={!valid || status === "sending"}
-          className="h-12 w-fit rounded-full bg-red-600 px-6 font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-zinc-300 dark:disabled:bg-zinc-700">
+          className="h-12 w-fit rounded-lg bg-brand px-6 font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-muted/40">
           {status === "sending" ? "Đang gửi…" : "Gửi thông tin"}
         </button>
       </form>
