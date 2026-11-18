@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { API_BASE_URL, isBackendConfigured } from "@/lib/api";
+import AuthSession from "./AuthSession";
 
 // Header / Menu (F01 + F13), màu theo đúng trang mẫu Figma:
 // nền #F4F4F7 phẳng (không viền, không blur), link menu #6B6B80,
@@ -11,10 +11,6 @@ import { API_BASE_URL, isBackendConfigured } from "@/lib/api";
 // bấm được, chờ chốt ở mục 8 của Plan. Nút EN bị ẩn vì chưa có đa ngôn ngữ
 // thật (F10). "Tin dùng" là CTA chính → dẫn tới form liên hệ (/contact).
 export default function Header() {
-  const googleAuthUrl = isBackendConfigured()
-    ? `${API_BASE_URL}/api/auth/google`
-    : null;
-
   return (
     <header className="sticky top-0 z-40 bg-page">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
@@ -45,23 +41,7 @@ export default function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
-          {googleAuthUrl ? (
-            <a
-              href={googleAuthUrl}
-              className="rounded-lg border border-outline px-3 py-1.5 text-sm font-medium text-muted hover:border-muted"
-            >
-              Đăng nhập với Google
-            </a>
-          ) : (
-            <button
-              type="button"
-              disabled
-              title="Đăng nhập Google do backend xác thực — backend chưa được cấu hình nên tạm thời chưa dùng được."
-              className="cursor-not-allowed rounded-lg border border-outline px-3 py-1.5 text-sm font-medium text-muted/50"
-            >
-              Đăng nhập với Google
-            </button>
-          )}
+          <AuthSession />
           <Link
             href="/contact"
             className="h-8 rounded-lg bg-brand px-4 py-1.5 text-sm font-semibold text-white hover:bg-brand-dark"

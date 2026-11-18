@@ -173,6 +173,37 @@ Chạy lại nhiều lần đều an toàn (ghi đè theo khóa chính). Hoặc 
 tiếp bằng `sqlite3 awing.db`. Database rỗng thì các endpoint trả rỗng/null
 và giao diện hiện trạng thái rỗng — là đúng theo thiết kế.
 
+### 5.6. Đăng nhập Google (SSO)
+
+Luồng OAuth 2.0 chuẩn, code backend đã có sẵn (`app/routers/auth.py` trong
+repo `BE_inventory`): `GET /api/auth/google` chuyển tới Google → Google
+callback về `/api/auth/google/callback` → backend đổi code lấy thông tin
+người dùng, lưu/cập nhật bảng `users`, phát JWT (24h) rồi chuyển về
+Frontend kèm `?auth_token=...`. Frontend (`src/lib/auth.ts` +
+`src/components/AuthSession.tsx`) đọc token đó, lưu vào localStorage
+(`awing_auth_token`), dọn sạch khỏi URL rồi hiện tên/email + nút Đăng xuất
+ở header. Các API hiện tại chưa yêu cầu xác thực nên token mới chỉ dùng để
+hiển thị trạng thái đăng nhập; khi có endpoint cần xác thực thì gửi kèm
+header `Authorization: Bearer <token>`.
+
+Còn 2 việc làm tay (không làm bằng code được):
+
+1. **Tạo OAuth client trên Google Cloud Console** (tài khoản Google của
+   tran): tạo project → OAuth consent screen → Create OAuth client ID,
+   loại Web application → Authorized redirect URI đúng bằng
+   `{PUBLIC_BASE_URL}/api/auth/google/callback` (local:
+   `http://localhost:8000/api/auth/google/callback`). Lấy Client ID và
+   Client Secret.
+2. **Đặt vào `.env` của backend** (`BE_inventory/.env`):
+   `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `JWT_SECRET` (giá trị ngẫu
+   nhiên, dài) và `PUBLIC_BASE_URL` phải khớp đúng redirect URI đã đăng ký
+   với Google — sai một ký tự Google cũng từ chối callback.
+
+Chưa cấu hình thì nút đăng nhập ở header hiện trạng thái disable rõ ràng,
+và `GET /api/auth/google` trả 503 `AUTH_NOT_CONFIGURED`. Editor đăng nhập
+Strapi admin bằng tài khoản Strapi riêng — hai hệ phiên độc lập, không
+dùng chung JWT này.
+
 ## 6. Strapi CMS + Postgres (trong Docker Compose)
 
 Project Strapi đã có sẵn trong repo, ở `cms/` (Strapi 5.62, TypeScript,
