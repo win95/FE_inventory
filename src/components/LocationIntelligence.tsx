@@ -3,25 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ApiError, fetchCoverage } from "@/lib/api";
-import type { CoverageLevel, CoverageResponse, LoadState } from "@/lib/types";
+import type { CoverageResponse, LoadState } from "@/lib/types";
+import HeatmapCard from "./HeatmapCard";
 
-// Location Intelligence + bản đồ nhiệt (F04), theo đúng trang mẫu Figma:
-// eyebrow đỏ in hoa, tiêu đề Barlow Condensed Black in hoa, thẻ mini trắng
-// số đỏ, nút Explore đỏ, thẻ heatmap trắng với thang Low–High 5 nấc đỏ.
-// Bản đồ vẽ từ dữ liệu phủ sóng backend trả về (theo tỉnh + theo loại venue,
-// lưu trong SQLite). Chưa có dữ liệu hình học tỉnh/thành trong SQLite nên
-// bản đồ địa lý đầy đủ là việc của giai đoạn sau; trước mắt hiển thị mức phủ
-// sóng từng tỉnh dạng thanh màu theo thang Low–High, đổi màu theo đúng mật
-// độ trong database. Không ghi cứng con số nào: database rỗng thì hiện trạng
-// thái rỗng.
-const LEVEL_STYLE: Record<CoverageLevel, { label: string; bar: string; text: string }> = {
-  low: { label: "Thấp", bar: "bg-heat-1", text: "text-muted" },
-  medium: { label: "Trung bình", bar: "bg-heat-3", text: "text-muted" },
-  high: { label: "Cao", bar: "bg-heat-5", text: "text-brand" },
-};
-
-const HEAT_SCALE = ["bg-heat-1", "bg-heat-2", "bg-heat-3", "bg-heat-4", "bg-heat-5"];
-
+// Location Intelligence + bản đồ nhiệt (F04) trên trang chủ, theo trang
+// mẫu Figma: eyebrow đỏ in hoa, tiêu đề Barlow Condensed Black in hoa,
+// thẻ mini trắng số đỏ, nút Explore đỏ, thẻ heatmap (xem HeatmapCard).
+// Dữ liệu phủ sóng lấy từ backend (SQLite) — database rỗng thì hiện trạng
+// thái rỗng, không tự điền số.
 export default function LocationIntelligence({ showExploreLink = true }: { showExploreLink?: boolean }) {
   const [state, setState] = useState<LoadState<CoverageResponse>>({ status: "loading" });
 
@@ -109,32 +98,8 @@ export default function LocationIntelligence({ showExploreLink = true }: { showE
             </Link>
           )}
 
-          <div className="mt-8 rounded-2xl border border-border bg-white p-6">
-            <p className="text-xs font-semibold tracking-widest text-muted uppercase">
-              Coverage Heatmap · Vietnam
-            </p>
-            <ul className="mt-5 space-y-3">
-              {state.data.provinces.map((row) => (
-                <li key={row.province} className="flex items-center gap-3">
-                  <span className="w-40 shrink-0 truncate text-sm font-medium text-ink">
-                    {row.province}
-                  </span>
-                  <span className="h-3 flex-1 overflow-hidden rounded-lg bg-page">
-                    <span className={`block h-full ${LEVEL_STYLE[row.level].bar}`} style={{ width: "100%" }} />
-                  </span>
-                  <span className={`w-28 shrink-0 text-right text-sm ${LEVEL_STYLE[row.level].text}`}>
-                    {LEVEL_STYLE[row.level].label} · {row.venues.toLocaleString("en-US")} điểm
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-6 flex items-center gap-2 text-xs font-medium text-muted">
-              <span>Low</span>
-              {HEAT_SCALE.map((swatch) => (
-                <span key={swatch} className={`inline-block h-3 w-8 rounded-sm ${swatch}`} />
-              ))}
-              <span>High</span>
-            </div>
+          <div className="mt-8">
+            <HeatmapCard provinces={state.data.provinces} />
           </div>
         </>
       )}

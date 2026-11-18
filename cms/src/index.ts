@@ -16,6 +16,32 @@ const PUBLIC_ACTIONS = [
 
 const WEBHOOK_EVENTS = ['entry.publish', 'entry.unpublish', 'entry.update'];
 
+// i18n: hai locale EN + VI, mặc định là VI (site chạy tiếng Việt trước).
+// Strapi tự tạo locale 'en' mặc định ở lần boot đầu nếu chưa có locale nào;
+// hàm này chỉ tạo thêm những locale còn thiếu rồi đặt mặc định về 'vi'
+// (idempotent — chạy lại không tạo trùng, không đổi gì nếu đã đúng).
+const LOCALES = [
+  { name: 'English', code: 'en' },
+  { name: 'Tiếng Việt', code: 'vi' },
+];
+const DEFAULT_LOCALE_CODE = 'vi';
+
+async function ensureLocales(strapi: Core.Strapi) {
+  const localesService = strapi.plugin('i18n').service('locales');
+  for (const locale of LOCALES) {
+    const existing = await localesService.findByCode(locale.code);
+    if (!existing) {
+      await localesService.create(locale);
+      strapi.log.info(`[bootstrap] Đã tạo locale: ${locale.code} (${locale.name})`);
+    }
+  }
+  const currentDefault = await localesService.getDefaultLocale();
+  if (currentDefault !== DEFAULT_LOCALE_CODE) {
+    await localesService.setDefaultLocale({ code: DEFAULT_LOCALE_CODE });
+    strapi.log.info(`[bootstrap] Đã đặt locale mặc định: ${DEFAULT_LOCALE_CODE}`);
+  }
+}
+
 async function grantPublicPermissions(strapi: Core.Strapi) {
   const role = await strapi.db
     .query('plugin::users-permissions.role')
@@ -67,6 +93,11 @@ export default {
 
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
     // Bootstrap không được làm sập server: lỗi ở đây chỉ ghi log.
+    try {
+      await ensureLocales(strapi);
+    } catch (error) {
+      strapi.log.error('[bootstrap] Không tạo được locale i18n:', error);
+    }
     try {
       await grantPublicPermissions(strapi);
     } catch (error) {

@@ -58,6 +58,33 @@ Tạo token trong Strapi admin: Settings → Global settings → API Tokens →
 Create new API Token — token chỉ hiện một lần lúc tạo, lưu kỹ. Chưa có
 token thì mọi request tới `/mcp` đều trả 401 `Authentication required`.
 
+## Đa ngôn ngữ (i18n) — EN + VI
+
+i18n bật cho cả 4 content type (`pluginOptions.i18n.localized: true` trong
+mỗi schema). Các trường chữ (title, slug, content, category, summary,
+description, heroTitle, heroSubtitle, statsNote, howItWorks, SEO) có bản
+riêng theo locale; ảnh (cover, ogImage), số (metricValue) và link (Product)
+dùng chung cho mọi locale.
+
+Bootstrap trong `src/index.ts` tự tạo 2 locale `en` (English) và `vi` (Tiếng
+Việt) rồi đặt **`vi` làm locale mặc định** — site tiếng Việt trước, tiếng Anh
+là bản dịch. Không cần tạo locale tay.
+
+Đọc theo locale qua REST:
+
+```bash
+curl "http://localhost:1337/api/articles?locale=vi"
+curl "http://localhost:1337/api/articles?locale=en"
+curl "http://localhost:1337/api/home?locale=vi"   # 404 khi Home chưa có nội dung
+```
+
+Không truyền `locale` thì trả locale mặc định (`vi`). Locale lạ cũng không
+lỗi — Strapi trả về nội dung theo locale mặc định.
+
+Tạo bản dịch trong admin: mở một entry, chọn locale ở góc trên bên phải
+(`vi`/`en`), bấm tạo bản dịch rồi Publish từng locale riêng. Frontend hiện
+chưa fetch theo locale — nút EN trên header chưa chuyển ngôn ngữ (bước sau).
+
 ## Biến môi trường
 
 Xem `.env.example`. Database mặc định là Postgres (qua Compose); để thử

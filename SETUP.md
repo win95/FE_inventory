@@ -300,6 +300,29 @@ chỉ hiện một lần lúc tạo, lưu kỹ. Chưa có token thì mọi reque
 báo `[MCP] Server available at /mcp`; POST không token và POST token sai
 đều 401; GET 405).
 
+### 6.6. Đa ngôn ngữ (i18n) — EN + VI
+
+i18n bật cho cả 4 content type (`pluginOptions.i18n.localized: true` trong
+mỗi schema). Các trường chữ (title, slug, content, category, summary,
+description, heroTitle, heroSubtitle, statsNote, howItWorks, SEO) có bản
+riêng theo locale; ảnh (cover, ogImage), số (metricValue) và link (Product)
+dùng chung cho mọi locale.
+
+Bootstrap trong `cms/src/index.ts` tự tạo 2 locale `en` (English) và `vi`
+(Tiếng Việt) rồi đặt **`vi` làm locale mặc định** — site tiếng Việt trước,
+tiếng Anh là bản dịch. Không cần tạo locale tay. Kiểm chứng: Strapi khởi
+động ghi log `[bootstrap] Đã tạo locale: vi (Tiếng Việt)` và `[bootstrap]
+Đã đặt locale mặc định: vi`; `GET /api/articles?locale=vi` và `?locale=en`
+đều trả 200.
+
+Đọc theo locale qua REST: `GET /api/articles?locale=vi` hoặc `?locale=en`
+(không truyền `locale` thì trả locale mặc định `vi`). Tạo bản dịch trong
+admin: mở một entry, chọn locale ở góc trên bên phải, bấm tạo bản dịch rồi
+Publish từng locale riêng.
+
+Chưa xong: Frontend hiện chưa fetch theo locale — nút EN trên header chưa
+chuyển ngôn ngữ, là bước sau.
+
 ## 7. Thứ tự chạy toàn bộ (checklist)
 
 1. `cp .env.example .env` (sửa secret) rồi `docker compose up --build -d`

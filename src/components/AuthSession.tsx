@@ -78,11 +78,13 @@ function AuthSessionInner() {
     );
   }
 
+  // Kiểu nút giống nút EN trên header theo trang mẫu Figma: bo 4px,
+  // viền border, chữ muted.
   if (isBackendConfigured()) {
     return (
       <a
         href={`${API_BASE_URL}/api/auth/google`}
-        className="rounded-lg border border-outline px-3 py-1.5 text-sm font-medium text-muted hover:border-muted"
+        className="rounded border border-border px-2.5 py-1.5 text-sm text-muted transition-colors hover:text-ink"
       >
         Đăng nhập với Google
       </a>
@@ -94,7 +96,7 @@ function AuthSessionInner() {
       type="button"
       disabled
       title="Đăng nhập Google do backend xác thực — backend chưa được cấu hình nên tạm thời chưa dùng được."
-      className="cursor-not-allowed rounded-lg border border-outline px-3 py-1.5 text-sm font-medium text-muted/50"
+      className="cursor-not-allowed rounded border border-border px-2.5 py-1.5 text-sm text-muted/50"
     >
       Đăng nhập với Google
     </button>

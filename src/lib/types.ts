@@ -17,7 +17,9 @@ export interface NetworkStats {
   venues: number | null;
 }
 
-export type CoverageLevel = "low" | "medium" | "high";
+// Mức tương tác 1-5 theo đúng thang của trang mẫu Figma (bản đồ nhiệt
+// Location Network): 1 Emerging, 2 Active, 3 Strong, 4 High, 5 Flagship.
+export type CoverageLevel = 1 | 2 | 3 | 4 | 5;
 
 export interface ProvinceCoverage {
   province: string;
@@ -33,13 +35,26 @@ export interface VenueTypeCount {
 export interface LocationDirectoryEntry {
   name: string;
   category: string;
-  venues: number;
+  /** Ghi chú dưới tên chuỗi, vd. "63 provinces", "24 cities", "Ha Noi". */
+  subtitle: string;
+  locations: number;
+  /** Reach tính bằng triệu (vd. 4.2 = 4.2M). */
+  reach: number | null;
 }
 
 export interface IndustryStat {
   industry: string;
   engagement: number | null;
   reach: number | null;
+  /** Tổng impressions (nghìn) cho biểu đồ Engagement by Industry. */
+  impressions: number | null;
+}
+
+export interface CityMonthlyStat {
+  city: string;
+  /** Trung bình tháng (triệu) cho biểu đồ Reach vs Engagement by City. */
+  monthlyReach: number | null;
+  monthlyEngagements: number | null;
 }
 
 export interface CoverageResponse {
@@ -49,6 +64,8 @@ export interface CoverageResponse {
   directory?: LocationDirectoryEntry[];
   /** Số liệu theo ngành: Engagement by Industry + Reach vs Engagement. */
   industryStats?: IndustryStat[];
+  /** Số liệu tháng theo thành phố cho biểu đồ Reach vs Engagement. */
+  cities?: CityMonthlyStat[];
 }
 
 export interface CampaignOverview {
