@@ -1,9 +1,17 @@
-# Dự án mới — Frontend
+# AWING — Home Public (FE_inventory)
 
-Khung Frontend, chờ brief để làm màn hình đầu tiên. Chưa có feature, chưa có API thật.
+Home Public theo Figma (https://plank-metal-22306544.figma.site/): Menu, Hero +
+Search bar, dải số liệu, heatmap phủ sóng, How AWING Works, Lead form, đăng
+nhập Google, Footer, trang kết quả tìm kiếm (`/advertisers`) và Contact Us
+(`/contact`). Chi tiết phân tích từng chức năng: xem Plan AWING 13 trang
+(`awing-plan-phan-tich-chuc-nang`).
 
 - **Stack:** Next.js 16.4.6 (App Router, Turbopack) + React 19 + TypeScript (strict) + Tailwind CSS 4
-- **Cấu trúc:** `src/app/` (route), `src/components/`, `src/lib/`, alias `@/*` → `src/*`
+- **Cấu trúc:** `src/app/` (route), `src/components/`, `src/lib/` (tầng gọi API duy nhất), alias `@/*` → `src/*`
+- **Dữ liệu:** Frontend chỉ lấy qua backend FastAPI + SQLite (`NEXT_PUBLIC_API_BASE_URL`,
+  xem `.env.example`). Không mock, không số liệu ghi cứng — database rỗng thì
+  giao diện hiện trạng thái rỗng. Realtime: backend loop-push toàn bộ dữ liệu,
+  trễ tối đa 1 phút; Frontend nhận qua SSE, mất SSE thì polling mỗi 60 giây.
 - **Chạy local:** `npm run dev` → http://localhost:3000 · `npm run build` · `npm run lint`
 - **Env:** copy `.env.example` sang `.env.local` khi có API thật
 
