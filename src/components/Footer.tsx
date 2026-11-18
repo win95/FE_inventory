@@ -29,7 +29,7 @@ export default function Footer() {
           <p className="text-sm font-semibold text-ink">{t("footer.quickLinks")}</p>
           <ul className="mt-3 space-y-2 text-sm text-muted">
             <li><Link href="/" className="hover:text-brand">{t("footer.home")}</Link></li>
-            <li><Link href="/advertisers" className="hover:text-brand">Advertisers</Link></li>
+            <li><Link href="/advertisers" className="hover:text-brand">{t("nav.advertisers")}</Link></li>
             <li><Link href="/contact" className="hover:text-brand">{t("footer.contact")}</Link></li>
           </ul>
         </nav>

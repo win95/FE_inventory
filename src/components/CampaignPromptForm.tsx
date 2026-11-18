@@ -62,7 +62,7 @@ export default function CampaignPromptForm() {
         >
           <path d="M3.4 20.4 21.9 12 3.4 3.6l-.01 6.53L14.5 12 3.39 13.87l.01 6.53Z" />
         </svg>
-        Get Suggestions
+        {t("hero.suggest")}
       </button>
     </form>
   );

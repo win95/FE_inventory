@@ -17,7 +17,7 @@ export default function Hero() {
     <section className="bg-page">
       <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
         <p className="inline-flex items-center gap-1.5 rounded-full border border-badge-border bg-badge-bg px-3 py-1 text-xs font-semibold tracking-widest text-brand uppercase">
-          <span aria-hidden="true">✦</span> Mobile Location-Based Marketing
+          <span aria-hidden="true">✦</span> {t("hero.eyebrow")}
         </p>
         <h1 className="mt-5 max-w-3xl font-display text-6xl leading-[1.08] font-black tracking-tight text-ink uppercase sm:text-7xl">
           {t("hero.titleA")}{" "}

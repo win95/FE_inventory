@@ -40,7 +40,7 @@ export default function FormatPreviewModal({
         </div>
 
         <div className="mx-auto mt-4 w-48 rounded-[2rem] border-4 border-ink bg-ink p-4 text-center">
-          <p className="text-xs font-semibold tracking-widest text-muted uppercase">Preview</p>
+          <p className="text-xs font-semibold tracking-widest text-muted uppercase">{t("modal.preview")}</p>
           <p className="mt-3 text-lg font-bold text-white">{format.name}</p>
           {format.durationSeconds !== null && format.durationSeconds !== undefined && (
             <p className="mt-1 text-sm text-white/70">{format.durationSeconds}s</p>

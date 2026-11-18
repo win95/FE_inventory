@@ -342,6 +342,18 @@ locale theo: FastAPI `GET /api/coverage?locale=`, `POST /api/suggest`
 (body `{prompt, locale}`), Strapi `GET /api/case-studies?populate=cover&locale=`.
 Metadata trong `layout.tsx` vẫn tiếng Việt (Next metadata tĩnh theo build).
 
+**Dịch hết theo từng mode (18/11/2026, theo yêu cầu của tran):** mọi chữ
+người dùng thấy đều dịch theo locale — tiêu đề/nhãn theo Figma, nút
+Edit/Update/Share/Save, "TÌM HIỂU NGAY →" (en: "Learn more →"), tiêu đề
+popup, nhãn thang heatmap, tên ngành/loại venue/nhóm thư mục/mô tả format
+(backend dịch trong `app/locale_names.py` — `VENUE_TYPE_VI`,
+`DIRECTORY_CATEGORY_VI`, `INDUSTRY_VI`, `FORMAT_DESCRIPTION_VI`,
+`METRIC_LABEL_VI`). Chỉ giữ nguyên: tên riêng (tên chuỗi, tên format,
+địa chỉ) và ghi chú kỹ thuật "AWING — Home Public (FE_inventory)" ở
+footer. Lưu ý: chip lọc thư mục ở /locations lấy nhãn theo locale hiện
+tại (`DIRECTORY_CATEGORIES[locale]`), và bộ lọc theo ngôn ngữ cũ được
+coi như chưa lọc khi đổi locale.
+
 ### 6.8. Màn /advertisers — khớp Figma hoàn toàn (18/11/2026)
 
 Desktop rộng: 2 cột — trái Suggested Locations + Suggested Ad Formats,
@@ -352,7 +364,8 @@ không có thẻ venue (đã bỏ theo quyết định của tran).
   liệu — chỉ hiện tên); chỉ chip đã chọn mới hiện số = monthly engagements;
   mặc định chọn top 3 theo monthly engagements (HCMC/Ha Noi/Da Nang →
   22,8M/15,7M/4,7M). Tổng Potential Engagements = tổng monthly engagements
-  của các chip đã chọn. Đổi locale sẽ refetch và reset lựa chọn về top 3.
+  của các chip đã chọn. Đổi locale sẽ refetch nhưng KHÔNG reset lựa chọn
+  (selection guard: chỉ khởi tạo top 3 khi `selectedCities === null`).
 - Formats: 4 thẻ theo đúng thứ tự CSV `ad_formats` (Bumper Ads, Banner /
   Slide, Text Matching, Video Full Screen), metric "Engagement", mỗi thẻ
   có mô tả + badge thời lượng + nút Play (mở popup xem trước) + nút đỏ

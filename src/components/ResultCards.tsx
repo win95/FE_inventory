@@ -31,12 +31,13 @@ export function AdFormatCard({
   format: AdFormat;
   onPreview: () => void;
 }) {
+  const { t } = useLocale();
   return (
     <article className="rounded-2xl border border-border bg-white p-3">
       <div
         role="button"
         tabIndex={0}
-        aria-label={`${format.name} — xem trước`}
+        aria-label={t("modal.previewAria", { name: format.name })}
         onClick={onPreview}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
@@ -53,14 +54,14 @@ export function AdFormatCard({
         )}
         <span className="absolute right-2.5 top-2.5 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-ink">
           <PlayIcon />
-          Play
+          {t("adv.play")}
         </span>
         <Link
           href="/contact"
           onClick={(event) => event.stopPropagation()}
           className="absolute inset-x-3 bottom-3 rounded-lg bg-brand py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
         >
-          TÌM HIỂU NGAY →
+          {t("adv.learnNow")}
         </Link>
       </div>
       <div className="px-1 pb-1 pt-3">

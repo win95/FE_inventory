@@ -35,8 +35,13 @@ type PageState =
 // Nhãn trục X của biểu đồ Reach vs Engagement lấy từ backend
 // (cities[].short, theo locale của request) — không dịch cứng ở Frontend.
 
-// Thứ tự chip lọc thư mục theo trang mẫu Figma.
-const DIRECTORY_CATEGORIES = ["Retail", "F&B", "Transit", "Healthcare"];
+// Thứ tự chip lọc thư mục theo trang mẫu Figma; nhãn theo locale của dữ
+// liệu (API đã dịch category) nên danh sách phải khớp locale hiện tại —
+// giữ cùng thứ tự và cùng bản dịch với DIRECTORY_CATEGORY_VI bên backend.
+const DIRECTORY_CATEGORIES: Record<"vi" | "en", string[]> = {
+  vi: ["Bán lẻ", "F&B", "Giao thông", "Y tế"],
+  en: ["Retail", "F&B", "Transit", "Healthcare"],
+};
 
 const TOOLTIP_STYLE: React.CSSProperties = {
   backgroundColor: "#fff",
@@ -197,14 +202,19 @@ export default function LocationsPage() {
   const categories = useMemo(() => {
     if (state.status !== "ready" || !state.coverage.directory) return [];
     const present = new Set(state.coverage.directory.map((d) => d.category));
-    return DIRECTORY_CATEGORIES.filter((c) => present.has(c));
-  }, [state]);
+    return DIRECTORY_CATEGORIES[locale].filter((c) => present.has(c));
+  }, [state, locale]);
+
+  // Bộ lọc theo ngôn ngữ cũ không khớp dữ liệu locale mới (vd. "Bán lẻ"
+  // ở vi mode sang en mode không còn) → coi như chưa lọc, không cần effect.
+  const effectiveCategory =
+    category && DIRECTORY_CATEGORIES[locale].includes(category) ? category : null;
 
   const directory = useMemo(() => {
     if (state.status !== "ready" || !state.coverage.directory) return [];
-    if (!category) return state.coverage.directory;
-    return state.coverage.directory.filter((d) => d.category === category);
-  }, [state, category]);
+    if (!effectiveCategory) return state.coverage.directory;
+    return state.coverage.directory.filter((d) => d.category === effectiveCategory);
+  }, [state, effectiveCategory]);
 
   const industryChart = useMemo(() => {
     if (state.status !== "ready" || !state.coverage.industryStats) return [];
@@ -255,10 +265,10 @@ export default function LocationsPage() {
             href="/"
             className="mb-4 flex items-center gap-1 text-sm text-muted transition-colors hover:text-ink"
           >
-            ← Home
+            {t("common.backHome")}
           </Link>
-          <h1 className="mb-1 font-display text-4xl font-black text-ink">AWING LOCATION NETWORK</h1>
-          <p className="text-sm text-muted">Real-time coverage across Vietnam · Updated daily</p>
+          <h1 className="mb-1 font-display text-4xl font-black text-ink">{t("locations.title")}</h1>
+          <p className="text-sm text-muted">{t("locations.subtitle")}</p>
         </div>
       </div>
 
@@ -311,14 +321,14 @@ export default function LocationsPage() {
           <main className="mx-auto max-w-7xl space-y-8 px-6 py-10">
             <HeatmapCard
               provinces={state.coverage.provinces}
-              onDrillDeeper={() => setAuthTitle("Drill deeper into location data")}
+              onDrillDeeper={() => setAuthTitle(t("locations.modalDrill"))}
             />
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <div className="rounded-2xl border border-border bg-white p-6">
-                <h3 className="mb-1 font-bold text-ink">Engagement by Industry</h3>
+                <h3 className="mb-1 font-bold text-ink">{t("locations.industryTitle")}</h3>
                 <p className="mb-6 text-xs text-muted">
-                  Total impressions (thousands) by vertical · last 30 days
+                  {t("locations.industrySubtitle")}
                 </p>
                 {industryChart.length === 0 ? (
                   <p className="text-sm text-muted">{t("locations.noIndustry")}</p>
@@ -353,8 +363,8 @@ export default function LocationsPage() {
               </div>
 
               <div className="rounded-2xl border border-border bg-white p-6">
-                <h3 className="mb-1 font-bold text-ink">Reach vs Engagement by City</h3>
-                <p className="mb-6 text-xs text-muted">Monthly average in millions</p>
+                <h3 className="mb-1 font-bold text-ink">{t("locations.cityTitle")}</h3>
+                <p className="mb-6 text-xs text-muted">{t("locations.citySubtitle")}</p>
                 {cityChart.length === 0 ? (
                   <p className="text-sm text-muted">{t("locations.noCities")}</p>
                 ) : (
@@ -382,11 +392,11 @@ export default function LocationsPage() {
                     </ResponsiveContainer>
                     <button
                       type="button"
-                      onClick={() => setAuthTitle("Brand-level breakdown")}
+                      onClick={() => setAuthTitle(t("locations.modalBrand"))}
                       className="mt-3 flex w-full items-center justify-center gap-1.5 text-xs text-muted/30 transition-colors hover:text-brand"
                     >
                       <LockIcon size={10} />
-                      Brand-level breakdown requires advertiser login
+                      {t("locations.brandNote")}
                     </button>
                   </>
                 )}
@@ -395,26 +405,26 @@ export default function LocationsPage() {
 
             <div className="rounded-2xl border border-border bg-white p-6">
               <div className="mb-5 flex items-center justify-between">
-                <h3 className="font-bold text-ink">Location Directory</h3>
+                <h3 className="font-bold text-ink">{t("locations.directoryTitle")}</h3>
                 <div className="flex gap-1.5">
                   <button
                     type="button"
-                    aria-pressed={category === null}
+                    aria-pressed={effectiveCategory === null}
                     onClick={() => setCategory(null)}
                     className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
-                      category === null ? "bg-brand text-white" : "bg-page text-muted hover:text-ink"
+                      effectiveCategory === null ? "bg-brand text-white" : "bg-page text-muted hover:text-ink"
                     }`}
                   >
-                    All
+                    {t("locations.all")}
                   </button>
                   {categories.map((c) => (
                     <button
                       key={c}
                       type="button"
-                      aria-pressed={category === c}
+                      aria-pressed={effectiveCategory === c}
                       onClick={() => setCategory(c)}
                       className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
-                        category === c ? "bg-brand text-white" : "bg-page text-muted hover:text-ink"
+                        effectiveCategory === c ? "bg-brand text-white" : "bg-page text-muted hover:text-ink"
                       }`}
                     >
                       {c}
@@ -432,7 +442,7 @@ export default function LocationsPage() {
                       <button
                         key={entry.name}
                         type="button"
-                        onClick={() => setAuthTitle(`View details for ${entry.name}`)}
+                        onClick={() => setAuthTitle(t("locations.modalDetails", { name: entry.name }))}
                         className="group -mx-2 flex w-full items-center justify-between rounded px-2 py-3 text-left transition-colors hover:bg-black/2"
                       >
                         <div className="flex items-center gap-3">
@@ -449,7 +459,7 @@ export default function LocationsPage() {
                         </div>
                         <div className="flex items-center gap-5">
                           <div className="text-right">
-                            <div className="text-xs text-muted">{entry.locations} locations</div>
+                            <div className="text-xs text-muted">{t("locations.locationsWord", { count: String(entry.locations) })}</div>
                             <div className="font-display text-sm font-black text-brand">
                               {entry.reach === null ? "—" : `${entry.reach}M`}
                             </div>
@@ -461,12 +471,13 @@ export default function LocationsPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setAuthTitle("Sign in to view all locations")}
+                    onClick={() => setAuthTitle(t("locations.modalSignIn"))}
                     className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-3 text-sm text-muted/40 transition-colors hover:border-brand/30 hover:text-brand"
                   >
                     <LockIcon size={13} />
-                    Sign in to view all{" "}
-                    {state.stats?.venues ? `${formatCompact(state.stats.venues, true)} locations` : "locations"}
+                    {state.stats?.venues
+                      ? t("locations.signInAll", { count: formatCompact(state.stats.venues, true) })
+                      : t("locations.modalSignIn")}
                   </button>
                 </>
               )}

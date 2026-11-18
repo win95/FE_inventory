@@ -198,7 +198,7 @@ function AdvertisersContent({ prompt }: { prompt: string }) {
       {editing ? (
         <div className="flex flex-wrap items-center gap-3">
           <Link href="/" className="shrink-0 text-sm text-muted hover:text-ink">
-            ← Home
+            {t("common.backHome")}
           </Link>
           <form onSubmit={resubmit} className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row">
             <label htmlFor="edit-prompt" className="sr-only">{t("adv.editLabel")}</label>
@@ -212,7 +212,7 @@ function AdvertisersContent({ prompt }: { prompt: string }) {
             />
             <button type="submit"
               className="h-12 shrink-0 rounded-lg bg-brand px-6 font-semibold text-white hover:bg-brand-dark">
-              Update
+              {t("adv.update")}
             </button>
             <button type="button" onClick={() => setEditing(false)}
               className="h-12 shrink-0 rounded-lg border border-outline px-6 font-medium text-muted hover:border-muted">
@@ -223,7 +223,7 @@ function AdvertisersContent({ prompt }: { prompt: string }) {
       ) : (
         <div className="flex items-center gap-3">
           <Link href="/" className="shrink-0 text-sm text-muted hover:text-ink">
-            ← Home
+            {t("common.backHome")}
           </Link>
           <div className="flex h-12 min-w-0 flex-1 items-center gap-2 rounded-lg border border-outline bg-white px-4">
             <span className="shrink-0 text-muted">
@@ -237,17 +237,17 @@ function AdvertisersContent({ prompt }: { prompt: string }) {
                 className="flex shrink-0 items-center gap-1 text-sm font-medium text-muted hover:text-ink"
               >
                 <PencilIcon />
-                Edit
+                {t("adv.edit")}
               </button>
             )}
           </div>
           <button
             type="button"
-            onClick={() => setAuthTitle("Save or share this campaign suggestion")}
+            onClick={() => setAuthTitle(t("adv.modalShare"))}
             className="flex h-12 shrink-0 items-center gap-1.5 rounded-lg bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark"
           >
             <ShareIcon />
-            Share / Save
+            {t("adv.shareSave")}
           </button>
         </div>
       )}
@@ -289,7 +289,7 @@ function AdvertisersContent({ prompt }: { prompt: string }) {
               {state.data.cities && state.data.cities.length > 0 && selectedCities && (
                 <section aria-label={t("a11y.selectedCities")}>
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <h2 className="text-xl font-bold text-ink">Suggested Locations</h2>
+                    <h2 className="text-xl font-bold text-ink">{t("adv.locationsTitle")}</h2>
                     {cityTotals && (
                       <p className="text-sm text-muted">
                         {t("adv.citiesSelected", { count: String(cityTotals.count) })}
@@ -346,7 +346,7 @@ function AdvertisersContent({ prompt }: { prompt: string }) {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setAuthTitle("Drill down to district/brand level")}
+                    onClick={() => setAuthTitle(t("adv.modalDrill"))}
                     className="mt-3 flex items-center gap-1.5 text-sm text-muted hover:text-brand"
                   >
                     <LockIcon />
@@ -357,13 +357,13 @@ function AdvertisersContent({ prompt }: { prompt: string }) {
 
               <section aria-label={t("a11y.suggestedFormats")}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="text-xl font-bold text-ink">Suggested Ad Formats</h2>
+                  <h2 className="text-xl font-bold text-ink">{t("adv.formatsTitle")}</h2>
                   <button
                     type="button"
-                    onClick={() => setAuthTitle("Create a customised ad format")}
+                    onClick={() => setAuthTitle(t("adv.modalCustom"))}
                     className="text-sm font-medium text-brand hover:text-brand-dark"
                   >
-                    + Create custom format
+                    {t("adv.createFormat")}
                   </button>
                 </div>
                 {state.data.formats.length === 0 ? (
@@ -382,7 +382,7 @@ function AdvertisersContent({ prompt }: { prompt: string }) {
 
         <aside className="lg:col-span-1">
           <section aria-label="Case Studies">
-            <h2 className="text-xl font-bold text-ink">Case Studies</h2>
+            <h2 className="text-xl font-bold text-ink">{t("adv.studiesTitle")}</h2>
             {studies.length === 0 ? (
               <p className="mt-3 text-sm text-muted">{t("adv.noStudies")}</p>
             ) : (
@@ -391,7 +391,7 @@ function AdvertisersContent({ prompt }: { prompt: string }) {
                   <CaseStudyCard
                     key={study.title}
                     study={study}
-                    onRequestAccess={() => setAuthTitle(`View the full ${study.title} case study`)}
+                    onRequestAccess={() => setAuthTitle(t("adv.modalStudy", { name: study.title }))}
                   />
                 ))}
               </div>

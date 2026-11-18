@@ -41,7 +41,7 @@ export default function AdvertiserAuthModal({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold tracking-widest text-brand uppercase">
-              Advertiser account required
+              {t("modal.accountRequired")}
             </p>
             <h2 className="mt-2 text-lg font-bold text-ink">{title}</h2>
           </div>
@@ -72,7 +72,7 @@ export default function AdvertiserAuthModal({
                   : "border border-outline text-muted hover:border-muted"
               }`}
             >
-              {m === "signin" ? "Sign In" : "Register"}
+              {m === "signin" ? t("modal.signIn") : t("modal.register")}
             </button>
           ))}
         </div>
@@ -80,7 +80,7 @@ export default function AdvertiserAuthModal({
         <form onSubmit={submit} className="mt-4 grid gap-3">
           <div>
             <label htmlFor="adv-email" className="text-sm font-medium text-ink">
-              Email *
+              {t("modal.email")}
             </label>
             <input
               id="adv-email"
@@ -93,7 +93,7 @@ export default function AdvertiserAuthModal({
           </div>
           <div>
             <label htmlFor="adv-password" className="text-sm font-medium text-ink">
-              Password *
+              {t("modal.password")}
             </label>
             <input
               id="adv-password"
@@ -113,7 +113,7 @@ export default function AdvertiserAuthModal({
             type="submit"
             className="h-11 rounded-lg bg-brand font-semibold text-white hover:bg-brand-dark"
           >
-            {mode === "signin" ? "Sign In" : "Register"}
+            {mode === "signin" ? t("modal.signIn") : t("modal.register")}
           </button>
         </form>
       </div>

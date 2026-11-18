@@ -38,10 +38,10 @@ export default function LocationIntelligence({ showExploreLink = true }: { showE
   }, [locale, t]);
 
   return (
-    <section aria-label="Location Intelligence" className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
-      <p className="text-xs font-semibold tracking-widest text-brand uppercase">Location Intelligence</p>
+    <section aria-label={t("coverage.eyebrow")} className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+      <p className="text-xs font-semibold tracking-widest text-brand uppercase">{t("coverage.eyebrow")}</p>
       <h2 className="mt-2 max-w-xl font-display text-4xl leading-[0.95] font-black tracking-tight text-ink uppercase sm:text-5xl">
-        Reach users where they actually are
+        {t("coverage.title")}
       </h2>
       <p className="mt-3 max-w-2xl text-muted">{t("coverage.description")}</p>
 
@@ -91,7 +91,7 @@ export default function LocationIntelligence({ showExploreLink = true }: { showE
 
           {showExploreLink && (
             <Link href="/locations" className="mt-6 inline-block rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
-              Explore Full Location Network →
+              {t("coverage.exploreFull")}
             </Link>
           )}
 

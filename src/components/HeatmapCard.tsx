@@ -10,6 +10,7 @@
 // Figma: 150 ô, 10 cột × 15 hàng); mức của từng tỉnh lấy từ API backend
 // (provinces.level 1-5). Tỉnh nào chưa có trong dữ liệu thì ô đó để trống.
 import type { CoverageLevel, ProvinceCoverage } from "@/lib/types";
+import { useLocale } from "./LocaleProvider";
 
 // Vị trí từng tỉnh trên lưới 10x15 (chỉ số ô 0-149), lấy từ HTML Figma.
 const GRID_POSITIONS: Record<number, string> = {
@@ -58,12 +59,13 @@ const LEVEL_OPACITY: Record<CoverageLevel, number> = {
 };
 
 // Thang chú giải (độ đậm trong chú giải hơi khác ô trên lưới: 0.6/0.8).
-const LEGEND: { level: CoverageLevel; label: string; opacity: number }[] = [
-  { level: 1, label: "Emerging", opacity: 0.2 },
-  { level: 2, label: "Active", opacity: 0.4 },
-  { level: 3, label: "Strong", opacity: 0.6 },
-  { level: 4, label: "High", opacity: 0.8 },
-  { level: 5, label: "Flagship", opacity: 1 },
+// Nhãn dịch theo locale — xem LEGEND_LABELS trong component.
+const LEGEND_OPACITY: { level: CoverageLevel; opacity: number }[] = [
+  { level: 1, opacity: 0.2 },
+  { level: 2, opacity: 0.4 },
+  { level: 3, opacity: 0.6 },
+  { level: 4, opacity: 0.8 },
+  { level: 5, opacity: 1 },
 ];
 
 function LockIcon({ size = 11 }: { size?: number }) {
@@ -94,10 +96,19 @@ export default function HeatmapCard({
   /** Khi có thì hiện nút Drill deeper (mở popup yêu cầu tài khoản advertiser). */
   onDrillDeeper?: () => void;
 }) {
+  const { t } = useLocale();
   const levelByProvince = new Map(provinces.map((p) => [p.province, p.level]));
   const displayByProvince = new Map(
     provinces.map((p) => [p.province, p.displayName ?? p.province]),
   );
+  // Nhãn thang chú giải theo locale (khóa heatmap.level1..5).
+  const LEGEND_LABELS: Record<CoverageLevel, string> = {
+    1: t("heatmap.level1"),
+    2: t("heatmap.level2"),
+    3: t("heatmap.level3"),
+    4: t("heatmap.level4"),
+    5: t("heatmap.level5"),
+  };
   const flagship = [...provinces]
     .filter((p) => p.level >= 4)
     .sort((a, b) => b.level - a.level || a.province.localeCompare(b.province))
@@ -107,9 +118,9 @@ export default function HeatmapCard({
     <div className="rounded-2xl border border-border bg-white p-8">
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <h2 className="text-lg font-bold text-ink">National Coverage Heatmap</h2>
+          <h2 className="text-lg font-bold text-ink">{t("heatmap.title")}</h2>
           <p className="mt-1 text-sm text-muted">
-            Engagement density by province across all 63 tỉnh thành
+            {t("heatmap.subtitle")}
           </p>
         </div>
         {onDrillDeeper && (
@@ -119,7 +130,7 @@ export default function HeatmapCard({
             className="flex items-center gap-1.5 rounded-lg border border-brand/20 px-3 py-2 text-xs text-brand transition-colors hover:bg-brand/5"
           >
             <LockIcon />
-            Drill deeper
+            {t("heatmap.drill")}
           </button>
         )}
       </div>
@@ -130,7 +141,7 @@ export default function HeatmapCard({
             className="inline-grid gap-2"
             style={{ gridTemplateColumns: "repeat(10, 1fr)" }}
             role="img"
-            aria-label="Bản đồ nhiệt mức tương tác theo tỉnh thành"
+            aria-label={t("heatmap.aria")}
           >
             {Array.from({ length: GRID_CELLS }, (_, i) => {
               const name = GRID_POSITIONS[i];
@@ -153,7 +164,10 @@ export default function HeatmapCard({
               return (
                 <div
                   key={i}
-                  title={`${displayByProvince.get(name) ?? name}: Engagement Level ${level}`}
+                  title={t("heatmap.tooltip", {
+                    name: displayByProvince.get(name) ?? name,
+                    level: String(level),
+                  })}
                   className="rounded transition-transform hover:scale-125"
                   style={{
                     width: 26,
@@ -171,9 +185,9 @@ export default function HeatmapCard({
         <div className="w-56 shrink-0 space-y-5">
           <div>
             <div className="mb-2 text-xs tracking-wider text-muted/50 uppercase">
-              Engagement Level
+              {t("heatmap.levelHeading")}
             </div>
-            {LEGEND.map((row) => (
+            {LEGEND_OPACITY.map((row) => (
               <div key={row.level} className="mb-2 flex items-center gap-2">
                 <div
                   className="rounded"
@@ -184,14 +198,14 @@ export default function HeatmapCard({
                     opacity: row.opacity,
                   }}
                 />
-                <span className="text-xs text-muted">{row.label}</span>
+                <span className="text-xs text-muted">{LEGEND_LABELS[row.level]}</span>
               </div>
             ))}
           </div>
           {flagship.length > 0 && (
             <div>
               <div className="mb-2 text-xs tracking-wider text-muted/50 uppercase">
-                Flagship Markets
+                {t("heatmap.flagship")}
               </div>
               {flagship.map((p) => (
                 <div

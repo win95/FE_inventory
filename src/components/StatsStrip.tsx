@@ -165,7 +165,7 @@ export default function StatsStrip() {
         </p>
         <div className="mt-4 flex justify-center">
           <Link href="/locations" className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
-            Explore Location Network →
+            {t("stats.explore")}
           </Link>
         </div>
       </div>

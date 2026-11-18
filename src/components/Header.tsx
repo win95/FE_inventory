@@ -55,19 +55,19 @@ export default function Header() {
 
         <nav aria-label={t("nav.main")} className="hidden items-center gap-7 text-sm text-muted md:flex">
           <span className="cursor-not-allowed text-muted/50" title={t("nav.noDestination")}>
-            Platform
+            {t("nav.platform")}
           </span>
           <Link href="/advertisers" className="transition-colors hover:text-ink">
-            Advertisers
+            {t("nav.advertisers")}
           </Link>
           <span className="cursor-not-allowed text-muted/50" title={t("nav.noDestination")}>
-            Wi-Fi Partners
+            {t("nav.wifiPartners")}
           </span>
           <span className="cursor-not-allowed text-muted/50" title={t("nav.noDestination")}>
-            About Us
+            {t("nav.about")}
           </span>
           <span className="cursor-not-allowed text-muted/50" title={t("nav.noDestination")}>
-            Media
+            {t("nav.media")}
           </span>
         </nav>
 

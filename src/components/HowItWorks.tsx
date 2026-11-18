@@ -32,11 +32,11 @@ export default function HowItWorks() {
   ];
 
   return (
-    <section aria-label="How AWING Works" className="bg-page">
+    <section aria-label={t("how.eyebrow")} className="bg-page">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
-        <p className="text-center text-xs font-semibold tracking-widest text-brand uppercase">How AWING Works</p>
+        <p className="text-center text-xs font-semibold tracking-widest text-brand uppercase">{t("how.eyebrow")}</p>
         <h2 className="mx-auto mt-2 max-w-2xl text-center font-display text-3xl leading-[0.95] font-black tracking-tight text-ink uppercase sm:text-4xl">
-          From prompt to campaign in minutes
+          {t("how.title")}
         </h2>
         <div className="mt-8 grid gap-6 md:grid-cols-3">
           {steps.map((step) => (
