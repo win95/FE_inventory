@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale } from "./LocaleProvider";
 
 // Popup "ADVERTISER ACCOUNT REQUIRED" như trên Figma: các thao tác Share/Save,
 // Drill down, tạo custom format, xem case study đầy đủ, xem chi tiết location
@@ -14,6 +15,7 @@ export default function AdvertiserAuthModal({
   title: string;
   onClose: () => void;
 }) {
+  const { t } = useLocale();
   const [mode, setMode] = useState<"signin" | "register">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,9 +23,7 @@ export default function AdvertiserAuthModal({
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
-    setNotice(
-      "Đăng nhập bằng email/mật khẩu cho tài khoản advertiser chưa được backend hỗ trợ. Tính năng này sẽ mở khi backend auth sẵn sàng.",
-    );
+    setNotice(t("modal.authNotice"));
   };
 
   return (
@@ -48,14 +48,14 @@ export default function AdvertiserAuthModal({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Đóng"
+            aria-label={t("common.close")}
             className="rounded-lg px-2 py-1 text-xl leading-none text-muted hover:bg-border"
           >
             ×
           </button>
         </div>
 
-        <div className="mt-4 flex gap-2" role="tablist" aria-label="Đăng nhập hoặc đăng ký">
+        <div className="mt-4 flex gap-2" role="tablist" aria-label={t("modal.authTabs")}>
           {(["signin", "register"] as const).map((m) => (
             <button
               key={m}

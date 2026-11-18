@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "./LocaleProvider";
 
 // Ô nhập ý tưởng chiến dịch ở Hero (F02) — cũng là Search bar của Home (F14).
 // Theo trang mẫu Figma: một thanh trắng duy nhất, icon tìm kiếm bên trái,
@@ -11,6 +12,7 @@ import { useRouter } from "next/navigation";
 // không submit được.
 export default function CampaignPromptForm() {
   const router = useRouter();
+  const { t } = useLocale();
   const [prompt, setPrompt] = useState("");
 
   const submit = (event: React.FormEvent) => {
@@ -37,14 +39,14 @@ export default function CampaignPromptForm() {
         <path d="m20 20-3.5-3.5" strokeLinecap="round" />
       </svg>
       <label htmlFor="campaign-prompt" className="sr-only">
-        Nhập ý tưởng cho chiến dịch
+        {t("hero.promptLabel")}
       </label>
       <input
         id="campaign-prompt"
         type="text"
         value={prompt}
         onChange={(event) => setPrompt(event.target.value)}
-        placeholder="Nhập ý tưởng cho chiến dịch…"
+        placeholder={t("hero.promptPlaceholder")}
         className="h-10 min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-muted"
       />
       <button

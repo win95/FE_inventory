@@ -320,8 +320,39 @@ tiếng Anh là bản dịch. Không cần tạo locale tay. Kiểm chứng: Str
 admin: mở một entry, chọn locale ở góc trên bên phải, bấm tạo bản dịch rồi
 Publish từng locale riêng.
 
-Chưa xong: Frontend hiện chưa fetch theo locale — nút EN trên header chưa
-chuyển ngôn ngữ, là bước sau.
+### 6.7. Nút EN/VN trên Frontend — đã xong
+
+Nút EN trên header giờ chuyển ngôn ngữ thật (locale `vi` mặc định, lưu
+`localStorage` key `awing_locale`): `src/components/LocaleProvider.tsx`
+dùng `useSyncExternalStore`, `src/lib/i18n.ts` là từ điển UI (vi là gốc,
+en phải đủ mọi key — TypeScript kiểm tra lúc build). Mọi fetch đều mang
+locale theo: FastAPI `GET /api/coverage?locale=`, `POST /api/suggest`
+(body `{prompt, locale}`), Strapi `GET /api/case-studies?populate=cover&locale=`.
+Metadata trong `layout.tsx` vẫn tiếng Việt (Next metadata tĩnh theo build).
+
+### 6.8. Màn /advertisers — khớp Figma hoàn toàn (18/11/2026)
+
+Desktop rộng: 2 cột — trái Suggested Locations + Suggested Ad Formats,
+phải Case Studies; màn hẹp: 1 cột. Không có h1, không có Campaign Overview,
+không có thẻ venue (đã bỏ theo quyết định của tran).
+
+- Chip thành phố: 8 chip (từ `city_stats`, kể cả Vũng Tàu/Huế chưa có số
+  liệu — chỉ hiện tên); chỉ chip đã chọn mới hiện số = monthly engagements;
+  mặc định chọn top 3 theo monthly engagements (HCMC/Ha Noi/Da Nang →
+  22,8M/15,7M/4,7M). Tổng Potential Engagements = tổng monthly engagements
+  của các chip đã chọn. Đổi locale sẽ refetch và reset lựa chọn về top 3.
+- Formats: 4 thẻ theo đúng thứ tự CSV `ad_formats` (Bumper Ads, Banner /
+  Slide, Text Matching, Video Full Screen), metric "Engagement", mỗi thẻ
+  có mô tả + badge thời lượng + nút Play (mở popup xem trước) + nút đỏ
+  "TÌM HIỂU NGAY →" (link /contact). Khối ảnh hiện là gradient giữ chỗ —
+  ảnh creative thật là file nhị phân, không push được qua snapshot flow;
+  khi có asset thì thay khối gradient trong `AdFormatCard`.
+- Case Studies: thẻ có banner ảnh (cover từ Strapi, không có thì gradient),
+  tên + ngành phủ trên ảnh, headline đỏ `+{metricValue}% {metricLabel}`
+  (quy ước nhập liệu: metricValue là % tăng, vd. 340 + "Brand Recall" →
+  "+340% Brand Recall"), mô tả (summary), link xem đầy đủ (mở popup
+  yêu cầu tài khoản advertiser). Chưa có bài published trên Strapi thì
+  hiện trạng thái rỗng. Footer ẩn ở trang này (Figma không có footer).
 
 ## 7. Thứ tự chạy toàn bộ (checklist)
 

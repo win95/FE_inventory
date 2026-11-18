@@ -1,14 +1,17 @@
+"use client";
+
 import Link from "next/link";
 import AuthSession from "./AuthSession";
+import { useLocale } from "./LocaleProvider";
 
 // Header / Menu (F01 + F13), theo đúng markup trang mẫu Figma
 // (file HTML tran gửi, 18/11/2026 — view Location Network):
 // fixed, nền rgba(244,244,247,0.95) + blur(16px), border-b;
 // logo Barlow Condensed Black text-xl tracking 0.12em;
 // nav gap-7, link #6B6B80, hover về màu chữ chính;
-// phải: nút EN có icon globe (hiện như Figma; bấm chưa chuyển ngôn ngữ
-// thật — F10, chuyển ngôn ngữ giao diện là việc sau), "Đối tác" nút chữ,
-// "Tin dùng" đỏ bo 4px font-medium hover red-700.
+// phải: nút EN/VI có icon globe (bấm để chuyển ngôn ngữ giao diện thật —
+// F10: locale lưu localStorage, dữ liệu gọi lại theo locale mới),
+// "Đối tác" nút chữ, "Tin dùng" đỏ bo 4px font-medium hover red-700.
 // Nút đăng nhập Google (F13) giữ lại, kiểu giống nút EN để cùng ngôn ngữ
 // nút trên header. Các mục chưa có trang đích (Platform, Wi-Fi Partners,
 // About Us, Media, Đối tác) hiển thị mờ + không bấm được, chờ chốt ở mục 8
@@ -35,6 +38,10 @@ function GlobeIcon() {
 }
 
 export default function Header() {
+  const { locale, setLocale, t } = useLocale();
+  // Nút hiện ngôn ngữ ĐÍCH: đang vi thì hiện EN, đang en thì hiện VI.
+  const target = locale === "vi" ? "en" : "vi";
+
   return (
     <header
       className="fixed top-0 right-0 left-0 z-50 border-b border-border"
@@ -46,20 +53,20 @@ export default function Header() {
           <span className="font-display text-xl font-black tracking-[0.12em] text-brand">WING</span>
         </Link>
 
-        <nav aria-label="Điều hướng chính" className="hidden items-center gap-7 text-sm text-muted md:flex">
-          <span className="cursor-not-allowed text-muted/50" title="Chưa có trang đích — để sau">
+        <nav aria-label={t("nav.main")} className="hidden items-center gap-7 text-sm text-muted md:flex">
+          <span className="cursor-not-allowed text-muted/50" title={t("nav.noDestination")}>
             Platform
           </span>
           <Link href="/advertisers" className="transition-colors hover:text-ink">
             Advertisers
           </Link>
-          <span className="cursor-not-allowed text-muted/50" title="Chưa có trang đích — để sau">
+          <span className="cursor-not-allowed text-muted/50" title={t("nav.noDestination")}>
             Wi-Fi Partners
           </span>
-          <span className="cursor-not-allowed text-muted/50" title="Chưa có trang đích — để sau">
+          <span className="cursor-not-allowed text-muted/50" title={t("nav.noDestination")}>
             About Us
           </span>
-          <span className="cursor-not-allowed text-muted/50" title="Chưa có trang đích — để sau">
+          <span className="cursor-not-allowed text-muted/50" title={t("nav.noDestination")}>
             Media
           </span>
         </nav>
@@ -68,23 +75,25 @@ export default function Header() {
           <AuthSession />
           <button
             type="button"
-            title="Chuyển ngôn ngữ giao diện — đang làm (F10)"
+            onClick={() => setLocale(target)}
+            title={t("nav.switchLanguage")}
+            aria-label={t("nav.switchLanguage")}
             className="flex items-center gap-1.5 rounded border border-border px-2.5 py-1.5 text-sm text-muted transition-colors hover:text-ink"
           >
             <GlobeIcon />
-            EN
+            {target === "en" ? "EN" : "VI"}
           </button>
           <span
             className="cursor-not-allowed px-4 py-1.5 text-sm text-muted/50"
-            title="Chưa có trang đích — để sau"
+            title={t("nav.noDestination")}
           >
-            Đối tác
+            {t("nav.partners")}
           </span>
           <Link
             href="/contact"
             className="rounded bg-brand px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-red-700"
           >
-            Tin dùng
+            {t("nav.trusted")}
           </Link>
         </div>
       </div>

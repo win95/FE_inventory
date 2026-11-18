@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { ApiError, submitLead } from "@/lib/api";
+import { useLocale } from "./LocaleProvider";
 
 // Lead form (F12). Gửi qua API backend, ghi vào SQLite — không mock.
 // Trường thông tin cụ thể chốt cùng tính năng; trước mắt dùng bộ trường
 // cơ bản đã có căn cứ ở form Contact Us (Họ tên / Email / SĐT / Tin nhắn).
 // Gửi lỗi thì báo tại chỗ, không mất nội dung đã nhập.
 export default function LeadForm() {
+  const { locale, t } = useLocale();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -23,11 +25,11 @@ export default function LeadForm() {
     setStatus("sending");
     setError("");
     try {
-      await submitLead({ name: name.trim(), email: email.trim(), phone: phone.trim(), message: message.trim() });
+      await submitLead({ name: name.trim(), email: email.trim(), phone: phone.trim(), message: message.trim() }, locale);
       setStatus("sent");
     } catch (err: unknown) {
       setStatus("error");
-      setError(err instanceof ApiError ? err.message : "Gửi không thành công. Thử lại sau.");
+      setError(err instanceof ApiError ? err.message : t("common.sendFailed"));
     }
   };
 
@@ -35,10 +37,8 @@ export default function LeadForm() {
     return (
       <section aria-label="Lead form" className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
         <div className="rounded-2xl border border-green-200 bg-green-50 p-6">
-          <p className="font-semibold text-green-700">Đã nhận thông tin của bạn.</p>
-          <p className="mt-1 text-sm text-green-600">
-            Chúng tôi sẽ liên hệ lại sớm. Cảm ơn bạn đã quan tâm tới AWING.
-          </p>
+          <p className="font-semibold text-green-700">{t("lead.sentTitle")}</p>
+          <p className="mt-1 text-sm text-green-600">{t("lead.sentBody")}</p>
         </div>
       </section>
     );
@@ -47,14 +47,12 @@ export default function LeadForm() {
   return (
     <section aria-label="Lead form" className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
       <h2 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-        Để lại thông tin — chúng tôi liên hệ lại
+        {t("lead.title")}
       </h2>
-      <p className="mt-2 max-w-2xl text-muted">
-        Dành cho nhà quảng cáo, chủ sở hữu Wi-Fi và đối tác muốn hợp tác.
-      </p>
+      <p className="mt-2 max-w-2xl text-muted">{t("lead.subtitle")}</p>
       <form onSubmit={submit} className="mt-6 grid max-w-2xl gap-4">
         <div>
-          <label htmlFor="lead-name" className="text-sm font-medium text-ink">Họ tên *</label>
+          <label htmlFor="lead-name" className="text-sm font-medium text-ink">{t("form.name")}</label>
           <input id="lead-name" type="text" value={name} onChange={(e) => setName(e.target.value)} required
             className="mt-1 h-11 w-full rounded-lg border border-outline bg-white px-3 text-ink outline-none focus:border-brand" />
         </div>
@@ -65,20 +63,20 @@ export default function LeadForm() {
               className="mt-1 h-11 w-full rounded-lg border border-outline bg-white px-3 text-ink outline-none focus:border-brand" />
           </div>
           <div>
-            <label htmlFor="lead-phone" className="text-sm font-medium text-ink">Số điện thoại *</label>
+          <label htmlFor="lead-phone" className="text-sm font-medium text-ink">{t("form.phone")}</label>
             <input id="lead-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required
               className="mt-1 h-11 w-full rounded-lg border border-outline bg-white px-3 text-ink outline-none focus:border-brand" />
           </div>
         </div>
         <div>
-          <label htmlFor="lead-message" className="text-sm font-medium text-ink">Tin nhắn *</label>
+          <label htmlFor="lead-message" className="text-sm font-medium text-ink">{t("form.message")}</label>
           <textarea id="lead-message" value={message} onChange={(e) => setMessage(e.target.value)} required rows={4}
             className="mt-1 w-full rounded-lg border border-outline bg-white px-3 py-2 text-ink outline-none focus:border-brand" />
         </div>
         {status === "error" && <p role="alert" className="text-sm text-brand">{error}</p>}
         <button type="submit" disabled={!valid || status === "sending"}
           className="h-12 w-fit rounded-lg bg-brand px-6 font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-muted/40">
-          {status === "sending" ? "Đang gửi…" : "Gửi thông tin"}
+          {status === "sending" ? t("common.sending") : t("form.sendLead")}
         </button>
       </form>
     </section>

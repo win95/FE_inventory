@@ -95,6 +95,9 @@ export default function HeatmapCard({
   onDrillDeeper?: () => void;
 }) {
   const levelByProvince = new Map(provinces.map((p) => [p.province, p.level]));
+  const displayByProvince = new Map(
+    provinces.map((p) => [p.province, p.displayName ?? p.province]),
+  );
   const flagship = [...provinces]
     .filter((p) => p.level >= 4)
     .sort((a, b) => b.level - a.level || a.province.localeCompare(b.province))
@@ -150,7 +153,7 @@ export default function HeatmapCard({
               return (
                 <div
                   key={i}
-                  title={`${name}: Engagement Level ${level}`}
+                  title={`${displayByProvince.get(name) ?? name}: Engagement Level ${level}`}
                   className="rounded transition-transform hover:scale-125"
                   style={{
                     width: 26,
@@ -195,7 +198,7 @@ export default function HeatmapCard({
                   key={p.province}
                   className="flex items-center justify-between border-b border-border py-1.5"
                 >
-                  <span className="text-xs text-muted">{p.province}</span>
+                  <span className="text-xs text-muted">{p.displayName ?? p.province}</span>
                   <span className="text-xs font-bold text-brand">L{p.level}</span>
                 </div>
               ))}

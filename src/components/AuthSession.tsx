@@ -10,6 +10,7 @@ import {
   parseSession,
   storeToken,
 } from "@/lib/auth";
+import { useLocale } from "./LocaleProvider";
 
 // Nút đăng nhập Google + trạng thái phiên (F13, SSO).
 // Đọc ?auth_token= mà backend gắn sau khi Google callback xong, lưu vào
@@ -30,6 +31,7 @@ function subscribeAuthChange(callback: () => void): () => void {
 function AuthSessionInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useLocale();
   const token = useSyncExternalStore(subscribeAuthChange, getStoredToken, () => null);
   const session = token ? parseSession(token) : null;
 
@@ -72,7 +74,7 @@ function AuthSessionInner() {
           onClick={() => clearToken()}
           className="rounded-lg px-2 py-1.5 text-sm font-medium text-muted hover:text-brand"
         >
-          Đăng xuất
+          {t("auth.signOut")}
         </button>
       </span>
     );
@@ -86,7 +88,7 @@ function AuthSessionInner() {
         href={`${API_BASE_URL}/api/auth/google`}
         className="rounded border border-border px-2.5 py-1.5 text-sm text-muted transition-colors hover:text-ink"
       >
-        Đăng nhập với Google
+        {t("auth.signInGoogle")}
       </a>
     );
   }
@@ -95,20 +97,21 @@ function AuthSessionInner() {
     <button
       type="button"
       disabled
-      title="Đăng nhập Google do backend xác thực — backend chưa được cấu hình nên tạm thời chưa dùng được."
+      title={t("auth.googleUnavailable")}
       className="cursor-not-allowed rounded border border-border px-2.5 py-1.5 text-sm text-muted/50"
     >
-      Đăng nhập với Google
+      {t("auth.signInGoogle")}
     </button>
   );
 }
 
 export default function AuthSession() {
+  const { t } = useLocale();
   return (
     <Suspense
       fallback={
         <span className="rounded-lg border border-outline px-3 py-1.5 text-sm font-medium text-muted/50">
-          Đăng nhập với Google
+          {t("auth.signInGoogle")}
         </span>
       }
     >

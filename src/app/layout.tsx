@@ -3,6 +3,7 @@ import { Barlow_Condensed, Inter } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import LocaleProvider from "@/components/LocaleProvider";
 
 // Font đo được trên trang mẫu Figma: Inter cho nội dung,
 // Barlow Condensed Black cho tiêu đề lớn. Cả hai đều có subset
@@ -31,10 +32,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${inter.variable} ${barlowCondensed.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-page text-ink">
-        <Header />
-        {/* Header fixed như trang mẫu Figma nên nội dung cần pt-16. */}
-        <div className="flex-1 pt-16">{children}</div>
-        <Footer />
+        <LocaleProvider>
+          <Header />
+          {/* Header fixed như trang mẫu Figma nên nội dung cần pt-16. */}
+          <div className="flex-1 pt-16">{children}</div>
+          <Footer />
+        </LocaleProvider>
       </body>
     </html>
   );

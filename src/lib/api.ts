@@ -18,6 +18,7 @@ import type {
   NetworkStats,
   SuggestResponse,
 } from "./types";
+import { translate, type Locale } from "./i18n";
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "";
@@ -44,9 +45,10 @@ export class ApiError extends Error {
 async function requestJson<T>(
   path: string,
   init?: RequestInit,
+  locale: Locale = "vi",
 ): Promise<T> {
   if (!isBackendConfigured()) {
-    throw new ApiError("Chưa cấu hình địa chỉ backend (NEXT_PUBLIC_API_BASE_URL).", 0);
+    throw new ApiError(translate(locale, "api.noBackendConfig"), 0);
   }
   let res: Response;
   try {
@@ -55,10 +57,10 @@ async function requestJson<T>(
       headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     });
   } catch {
-    throw new ApiError("Không kết nối được tới backend. Kiểm tra backend có đang chạy không.", 0);
+    throw new ApiError(translate(locale, "api.backendUnreachable"), 0);
   }
   if (!res.ok) {
-    throw new ApiError(`Backend trả lỗi ${res.status}.`, res.status);
+    throw new ApiError(translate(locale, "api.backendError", { status: String(res.status) }), res.status);
   }
   return (await res.json()) as T;
 }
@@ -71,15 +73,21 @@ export async function fetchNetworkStats(): Promise<NetworkStats | null> {
   return requestJson<NetworkStats | null>("/api/network-stats");
 }
 
-export async function fetchCoverage(): Promise<CoverageResponse | null> {
-  return requestJson<CoverageResponse | null>("/api/coverage");
+// Locale đi kèm mọi request dữ liệu: tên tỉnh/thành backend trả theo
+// locale đó (mặc định vi) để nút EN/VN đổi cả dữ liệu, không chỉ chữ cứng.
+export async function fetchCoverage(locale: Locale = "vi"): Promise<CoverageResponse | null> {
+  return requestJson<CoverageResponse | null>(`/api/coverage?locale=${locale}`, undefined, locale);
 }
 
-export async function fetchSuggest(prompt: string): Promise<SuggestResponse> {
-  return requestJson<SuggestResponse>("/api/suggest", {
-    method: "POST",
-    body: JSON.stringify({ prompt }),
-  });
+export async function fetchSuggest(prompt: string, locale: Locale = "vi"): Promise<SuggestResponse> {
+  return requestJson<SuggestResponse>(
+    "/api/suggest",
+    {
+      method: "POST",
+      body: JSON.stringify({ prompt, locale }),
+    },
+    locale,
+  );
 }
 
 interface StrapiCaseStudyItem {
@@ -87,6 +95,8 @@ interface StrapiCaseStudyItem {
   industry?: string;
   metricLabel?: string;
   metricValue?: number | null;
+  summary?: string;
+  cover?: { url?: string } | null;
 }
 
 interface StrapiListResponse<T> {
@@ -95,41 +105,62 @@ interface StrapiListResponse<T> {
 
 // Case study nằm trong Strapi (Plan §6), không qua FastAPI. Chưa cấu hình
 // Strapi hoặc chưa có bài published thì trả danh sách rỗng — giao diện hiện
-// trạng thái rỗng, không tự điền số.
-export async function fetchCaseStudies(): Promise<CaseStudy[]> {
+// trạng thái rỗng, không tự điền số. Locale đi qua ?locale= để nội dung
+// Strapi đổi theo nút EN/VN (mặc định vi, khớp locale mặc định của Strapi).
+export async function fetchCaseStudies(locale: Locale = "vi"): Promise<CaseStudy[]> {
   if (!isStrapiConfigured()) {
     return [];
   }
   let res: Response;
   try {
-    res = await fetch(`${STRAPI_BASE_URL}/api/case-studies?populate=cover`);
+    res = await fetch(`${STRAPI_BASE_URL}/api/case-studies?populate=cover&locale=${locale}`);
   } catch {
-    throw new ApiError("Không kết nối được tới Strapi CMS. Kiểm tra Strapi có đang chạy không.", 0);
+    throw new ApiError(translate(locale, "api.strapiUnreachable"), 0);
   }
   if (!res.ok) {
-    throw new ApiError(`Strapi trả lỗi ${res.status}.`, res.status);
+    throw new ApiError(translate(locale, "api.strapiError", { status: String(res.status) }), res.status);
   }
   const body = (await res.json()) as StrapiListResponse<StrapiCaseStudyItem>;
-  return (body.data ?? []).map((item) => ({
-    title: item.title ?? "",
-    industry: item.industry ?? "",
-    metricLabel: item.metricLabel ?? "",
-    metricValue: item.metricValue ?? null,
-  }));
-}
-
-export async function submitLead(payload: LeadPayload): Promise<void> {
-  await requestJson("/api/leads", {
-    method: "POST",
-    body: JSON.stringify(payload),
+  return (body.data ?? []).map((item) => {
+    // Strapi v5 trả media dạng phẳng { url }; url tương đối thì ghép host Strapi.
+    const rawUrl = item.cover?.url ?? null;
+    const coverUrl =
+      rawUrl === null
+        ? null
+        : rawUrl.startsWith("http")
+          ? rawUrl
+          : `${STRAPI_BASE_URL}${rawUrl}`;
+    return {
+      title: item.title ?? "",
+      industry: item.industry ?? "",
+      metricLabel: item.metricLabel ?? "",
+      metricValue: item.metricValue ?? null,
+      summary: item.summary ?? null,
+      coverUrl,
+    };
   });
 }
 
-export async function submitContact(payload: ContactPayload): Promise<void> {
-  await requestJson("/api/contact", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+export async function submitLead(payload: LeadPayload, locale: Locale = "vi"): Promise<void> {
+  await requestJson(
+    "/api/leads",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+    locale,
+  );
+}
+
+export async function submitContact(payload: ContactPayload, locale: Locale = "vi"): Promise<void> {
+  await requestJson(
+    "/api/contact",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+    locale,
+  );
 }
 
 export function isEmptySuggest(data: SuggestResponse): boolean {
@@ -150,9 +181,10 @@ export const REALTIME_POLL_MS = 60_000;
 export function subscribeNetworkStats(
   onSnapshot: (stats: NetworkStats | null) => void,
   onError: (message: string) => void,
+  locale: Locale = "vi",
 ): () => void {
   if (!isBackendConfigured()) {
-    onError("Chưa cấu hình địa chỉ backend (NEXT_PUBLIC_API_BASE_URL).");
+    onError(translate(locale, "api.noBackendConfig"));
     return () => {};
   }
   let stopped = false;
@@ -163,7 +195,7 @@ export function subscribeNetworkStats(
     try {
       onSnapshot(await fetchNetworkStats());
     } catch (err) {
-      onError(err instanceof Error ? err.message : "Không tải được số liệu.");
+      onError(err instanceof Error ? err.message : translate(locale, "api.statsFailed"));
     }
   };
   const startPolling = () => {
@@ -182,7 +214,7 @@ export function subscribeNetworkStats(
       try {
         onSnapshot(JSON.parse(event.data) as NetworkStats | null);
       } catch {
-        onError("Backend đẩy dữ liệu realtime không đọc được.");
+        onError(translate(locale, "api.realtimeUnreadable"));
       }
     };
     source.onerror = () => {

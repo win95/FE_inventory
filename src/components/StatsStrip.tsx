@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ApiError, fetchNetworkStats, subscribeNetworkStats } from "@/lib/api";
 import type { LoadState, NetworkStats } from "@/lib/types";
+import { useLocale } from "./LocaleProvider";
 
 // Dải số liệu tin cậy (F03), theo đúng trang mẫu Figma: dải trắng phẳng,
 // mỗi mục có icon đỏ trên nền hồng nhạt, số đen in đậm, nhãn xám.
@@ -46,6 +47,7 @@ const ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function StatsStrip() {
+  const { locale, t } = useLocale();
   const [state, setState] = useState<LoadState<NetworkStats>>({ status: "loading" });
 
   useEffect(() => {
@@ -62,25 +64,25 @@ export default function StatsStrip() {
     fetchNetworkStats()
       .then(apply)
       .catch((err: unknown) =>
-        fail(err instanceof ApiError ? err.message : "Không tải được số liệu."),
+        fail(err instanceof ApiError ? err.message : t("api.statsFailed")),
       );
-    const unsubscribe = subscribeNetworkStats(apply, fail);
+    const unsubscribe = subscribeNetworkStats(apply, fail, locale);
     return () => {
       cancelled = true;
       unsubscribe();
     };
-  }, []);
+  }, [locale, t]);
 
   const cells: { label: string; icon: string; value: (data: NetworkStats) => string }[] = [
-    { label: "Lượt kết nối", icon: "users", value: (d) => formatCompact(d.connections) },
-    { label: "Tỉnh thành phố", icon: "pin", value: (d) => `${formatCompact(d.provinces)}/63` },
-    { label: "Chuỗi hệ thống", icon: "chain", value: (d) => `${formatCompact(d.chains)}+` },
-    { label: "Địa điểm phủ sóng", icon: "bolt", value: (d) => formatCompact(d.venues) },
+    { label: t("stats.connections"), icon: "users", value: (d) => formatCompact(d.connections) },
+    { label: t("stats.provinces"), icon: "pin", value: (d) => `${formatCompact(d.provinces)}/63` },
+    { label: t("stats.chains"), icon: "chain", value: (d) => `${formatCompact(d.chains)}+` },
+    { label: t("stats.venues"), icon: "bolt", value: (d) => formatCompact(d.venues) },
   ];
 
   if (state.status === "loading") {
     return (
-      <section aria-label="Số liệu mạng lưới" className="bg-white">
+      <section aria-label={t("a11y.networkStats")} className="bg-white">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {cells.map((cell) => (
@@ -100,14 +102,12 @@ export default function StatsStrip() {
 
   if (state.status === "empty" || state.status === "no-backend") {
     return (
-      <section aria-label="Số liệu mạng lưới" className="bg-white">
+      <section aria-label={t("a11y.networkStats")} className="bg-white">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
           <div className="rounded-2xl border border-dashed border-outline p-6 text-center">
-            <p className="font-medium text-ink">Chưa có số liệu mạng lưới</p>
+            <p className="font-medium text-ink">{t("stats.emptyTitle")}</p>
             <p className="mt-1 text-sm text-muted">
-              {state.status === "no-backend"
-                ? "Chưa kết nối được backend — cấu hình NEXT_PUBLIC_API_BASE_URL và chạy backend FastAPI + SQLite."
-                : "Database chưa có số liệu. Thêm bản ghi vào SQLite thì các ô số liệu sẽ hiện ở đây."}
+              {state.status === "no-backend" ? t("stats.noBackend") : t("stats.emptyDb")}
             </p>
           </div>
         </div>
@@ -117,17 +117,17 @@ export default function StatsStrip() {
 
   if (state.status === "error") {
     return (
-      <section aria-label="Số liệu mạng lưới" className="bg-white">
+      <section aria-label={t("a11y.networkStats")} className="bg-white">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
           <div className="rounded-2xl border border-badge-border bg-badge-bg p-6 text-center">
-            <p className="font-medium text-brand">Không tải được số liệu mạng lưới</p>
+            <p className="font-medium text-brand">{t("stats.errorTitle")}</p>
             <p className="mt-1 text-sm text-brand/80">{state.message}</p>
             <button
               type="button"
               onClick={() => window.location.reload()}
               className="mt-4 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
             >
-              Thử lại
+              {t("common.retry")}
             </button>
           </div>
         </div>
@@ -136,7 +136,7 @@ export default function StatsStrip() {
   }
 
   return (
-    <section aria-label="Số liệu mạng lưới" className="bg-white">
+    <section aria-label={t("a11y.networkStats")} className="bg-white">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
         <div className="grid grid-cols-2 gap-4 lg:flex lg:gap-0 lg:divide-x lg:divide-divider">
           {cells.map((cell) => (
@@ -154,7 +154,7 @@ export default function StatsStrip() {
           ))}
         </div>
         <p className="mt-4 text-center text-xs text-muted">
-          Số liệu cập nhật theo thời gian thực từ backend (trễ tối đa 1 phút).
+          {t("stats.realtimeNote")}
         </p>
         <div className="mt-4 flex justify-center">
           <Link href="/locations" className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">

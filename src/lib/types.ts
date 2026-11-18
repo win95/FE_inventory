@@ -22,7 +22,10 @@ export interface NetworkStats {
 export type CoverageLevel = 1 | 2 | 3 | 4 | 5;
 
 export interface ProvinceCoverage {
+  /** Khóa ổn định: tên tiếng Anh trong DB — dùng để khớp với lưới heatmap. */
   province: string;
+  /** Tên hiển thị theo locale (?locale=vi|en); vi -> "Hà Nội", en -> "Ha Noi". */
+  displayName?: string | null;
   level: CoverageLevel;
   venues: number;
 }
@@ -52,6 +55,8 @@ export interface IndustryStat {
 
 export interface CityMonthlyStat {
   city: string;
+  /** Nhãn ngắn cho trục X biểu đồ (vd. HCM), theo locale của request. */
+  short?: string | null;
   /** Trung bình tháng (triệu) cho biểu đồ Reach vs Engagement by City. */
   monthlyReach: number | null;
   monthlyEngagements: number | null;
@@ -89,6 +94,8 @@ export interface AdFormat {
   metricValue: number | null;
   /** Thời lượng xem trước trong popup điện thoại, tính bằng giây. */
   durationSeconds?: number | null;
+  /** Mô tả hiển thị trên thẻ format (theo Figma Advertisers). */
+  description?: string | null;
 }
 
 /** Một thành phố trong gợi ý — bật/tắt chip sẽ đổi tổng số liệu. */
@@ -97,6 +104,8 @@ export interface SuggestCity {
   reach: number | null;
   engagements: number | null;
   impressionsPerDay: number | null;
+  /** Tương tác trung bình tháng, đơn vị TRIỆU — số hiện trên chip khi được chọn. */
+  monthlyEngagements?: number | null;
 }
 
 export interface SuggestResponse {
@@ -112,6 +121,10 @@ export interface CaseStudy {
   industry: string;
   metricLabel: string;
   metricValue: number | null;
+  /** Mô tả ngắn hiển thị dưới headline (Strapi summary). */
+  summary?: string | null;
+  /** URL tuyệt đối của ảnh cover (Strapi media); null thì dùng khối màu. */
+  coverUrl?: string | null;
 }
 
 export interface LeadPayload {

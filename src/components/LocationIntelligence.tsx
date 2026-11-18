@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ApiError, fetchCoverage } from "@/lib/api";
 import type { CoverageResponse, LoadState } from "@/lib/types";
 import HeatmapCard from "./HeatmapCard";
+import { useLocale } from "./LocaleProvider";
 
 // Location Intelligence + bản đồ nhiệt (F04) trên trang chủ, theo trang
 // mẫu Figma: eyebrow đỏ in hoa, tiêu đề Barlow Condensed Black in hoa,
@@ -12,11 +13,12 @@ import HeatmapCard from "./HeatmapCard";
 // Dữ liệu phủ sóng lấy từ backend (SQLite) — database rỗng thì hiện trạng
 // thái rỗng, không tự điền số.
 export default function LocationIntelligence({ showExploreLink = true }: { showExploreLink?: boolean }) {
+  const { locale, t } = useLocale();
   const [state, setState] = useState<LoadState<CoverageResponse>>({ status: "loading" });
 
   useEffect(() => {
     let cancelled = false;
-    fetchCoverage()
+    fetchCoverage(locale)
       .then((data) => {
         if (cancelled) return;
         if (!data || data.provinces.length === 0) setState({ status: "empty" });
@@ -26,14 +28,14 @@ export default function LocationIntelligence({ showExploreLink = true }: { showE
         if (!cancelled) {
           setState({
             status: "error",
-            message: err instanceof ApiError ? err.message : "Không tải được dữ liệu phủ sóng.",
+            message: err instanceof ApiError ? err.message : t("coverage.loadFailed"),
           });
         }
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [locale, t]);
 
   return (
     <section aria-label="Location Intelligence" className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
@@ -41,10 +43,7 @@ export default function LocationIntelligence({ showExploreLink = true }: { showE
       <h2 className="mt-2 max-w-xl font-display text-4xl leading-[0.95] font-black tracking-tight text-ink uppercase sm:text-5xl">
         Reach users where they actually are
       </h2>
-      <p className="mt-3 max-w-2xl text-muted">
-        Mức phủ sóng theo tỉnh/thành và theo loại địa điểm, lấy trực tiếp từ
-        database qua API — thay đổi dữ liệu trong SQLite thì bản đồ đổi theo.
-      </p>
+      <p className="mt-3 max-w-2xl text-muted">{t("coverage.description")}</p>
 
       {state.status === "loading" && (
         <div className="mt-8 animate-pulse space-y-3">
@@ -56,23 +55,21 @@ export default function LocationIntelligence({ showExploreLink = true }: { showE
 
       {state.status === "empty" && (
         <div className="mt-8 rounded-2xl border border-dashed border-outline bg-white p-6 text-center">
-          <p className="font-medium text-ink">Chưa có dữ liệu phủ sóng</p>
-          <p className="mt-1 text-sm text-muted">
-            Thêm tỉnh/thành và số điểm theo loại venue vào SQLite thì bản đồ nhiệt sẽ hiện ở đây.
-          </p>
+          <p className="font-medium text-ink">{t("coverage.emptyTitle")}</p>
+          <p className="mt-1 text-sm text-muted">{t("coverage.emptyBody")}</p>
         </div>
       )}
 
       {state.status === "error" && (
         <div className="mt-8 rounded-2xl border border-badge-border bg-badge-bg p-6 text-center">
-          <p className="font-medium text-brand">Không tải được dữ liệu phủ sóng</p>
+          <p className="font-medium text-brand">{t("coverage.loadFailed")}</p>
           <p className="mt-1 text-sm text-brand/80">{state.message}</p>
           <button
             type="button"
             onClick={() => window.location.reload()}
             className="mt-4 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
           >
-            Thử lại
+            {t("common.retry")}
           </button>
         </div>
       )}

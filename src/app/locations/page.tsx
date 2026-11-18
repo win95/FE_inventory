@@ -16,6 +16,7 @@ import { ApiError, fetchCoverage, fetchNetworkStats } from "@/lib/api";
 import type { CoverageResponse, NetworkStats } from "@/lib/types";
 import HeatmapCard from "@/components/HeatmapCard";
 import AdvertiserAuthModal from "@/components/AdvertiserAuthModal";
+import { useLocale } from "@/components/LocaleProvider";
 
 // Màn AWING Location Network, theo đúng markup trang mẫu Figma
 // (file HTML tran gửi, 18/11/2026): dải tiêu đề trắng + "← Home", dải số
@@ -31,15 +32,8 @@ type PageState =
   | { status: "ready"; stats: NetworkStats | null; coverage: CoverageResponse }
   | { status: "error"; message: string };
 
-// Nhãn trục X của biểu đồ Reach vs Engagement (đúng trang mẫu Figma).
-const CITY_LABELS: Record<string, string> = {
-  "TP. Hồ Chí Minh": "HCM",
-  "Hà Nội": "Ha Noi",
-  "Đà Nẵng": "Da Nang",
-  "Hải Phòng": "Hai Phong",
-  "Cần Thơ": "Can Tho",
-  "Biên Hòa": "Bien Hoa",
-};
+// Nhãn trục X của biểu đồ Reach vs Engagement lấy từ backend
+// (cities[].short, theo locale của request) — không dịch cứng ở Frontend.
 
 // Thứ tự chip lọc thư mục theo trang mẫu Figma.
 const DIRECTORY_CATEGORIES = ["Retail", "F&B", "Transit", "Healthcare"];
@@ -146,13 +140,14 @@ function LockIcon({ size = 12, className = "" }: { size?: number; className?: st
 }
 
 export default function LocationsPage() {
+  const { locale, t } = useLocale();
   const [state, setState] = useState<PageState>({ status: "loading" });
   const [category, setCategory] = useState<string | null>(null);
   const [authTitle, setAuthTitle] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchNetworkStats(), fetchCoverage()])
+    Promise.all([fetchNetworkStats(), fetchCoverage(locale)])
       .then(([stats, coverage]) => {
         if (cancelled) return;
         setState({
@@ -165,13 +160,13 @@ export default function LocationsPage() {
         if (cancelled) return;
         setState({
           status: "error",
-          message: err instanceof ApiError ? err.message : "Không tải được dữ liệu mạng lưới.",
+          message: err instanceof ApiError ? err.message : t("locations.loadFailed"),
         });
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [locale, t]);
 
   const categories = useMemo(() => {
     if (state.status !== "ready" || !state.coverage.directory) return [];
@@ -197,7 +192,7 @@ export default function LocationsPage() {
     return state.coverage.cities
       .filter((c) => c.monthlyReach !== null && c.monthlyReach !== undefined)
       .map((c) => ({
-        city: CITY_LABELS[c.city] ?? c.city,
+        city: c.short ?? c.city,
         Reach: c.monthlyReach as number,
         Engagement: c.monthlyEngagements ?? 0,
       }));
@@ -213,10 +208,10 @@ export default function LocationsPage() {
   const statsCells =
     state.status === "ready" && state.stats
       ? [
-          { label: "Lượt kết nối", icon: "users" as const, value: formatCompact(state.stats.connections) },
-          { label: "Tỉnh thành phố", icon: "pin" as const, value: `${formatCompact(state.stats.provinces)}/63` },
-          { label: "Chuỗi hệ thống", icon: "building" as const, value: `${formatCompact(state.stats.chains)}+` },
-          { label: "Địa điểm phủ sóng", icon: "zap" as const, value: formatCompact(state.stats.venues, true) },
+          { label: t("stats.connections"), icon: "users" as const, value: formatCompact(state.stats.connections) },
+          { label: t("stats.provinces"), icon: "pin" as const, value: `${formatCompact(state.stats.provinces)}/63` },
+          { label: t("stats.chains"), icon: "building" as const, value: `${formatCompact(state.stats.chains)}+` },
+          { label: t("stats.venues"), icon: "zap" as const, value: formatCompact(state.stats.venues, true) },
         ]
       : [];
 
@@ -236,7 +231,7 @@ export default function LocationsPage() {
       </div>
 
       {state.status === "loading" && (
-        <div className="mx-auto max-w-7xl animate-pulse space-y-4 px-6 py-10" aria-label="Đang tải dữ liệu mạng lưới">
+        <div className="mx-auto max-w-7xl animate-pulse space-y-4 px-6 py-10" aria-label={t("locations.loading")}>
           {[0, 1, 2].map((i) => (
             <div key={i} className="h-24 rounded-2xl bg-border" />
           ))}
@@ -246,14 +241,14 @@ export default function LocationsPage() {
       {state.status === "error" && (
         <div className="mx-auto max-w-7xl px-6 py-10">
           <div className="rounded-2xl border border-badge-border bg-badge-bg p-8 text-center">
-            <p className="font-medium text-brand">Không tải được dữ liệu mạng lưới</p>
+            <p className="font-medium text-brand">{t("locations.loadFailed")}</p>
             <p className="mt-1 text-sm text-brand">{state.message}</p>
             <button
               type="button"
               onClick={() => window.location.reload()}
               className="mt-4 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
             >
-              Thử lại
+              {t("common.retry")}
             </button>
           </div>
         </div>
@@ -294,10 +289,7 @@ export default function LocationsPage() {
                   Total impressions (thousands) by vertical · last 30 days
                 </p>
                 {industryChart.length === 0 ? (
-                  <p className="text-sm text-muted">
-                    Chưa có dữ liệu theo ngành từ backend. Thêm số liệu theo ngành vào SQLite thì biểu đồ sẽ hiện
-                    ở đây.
-                  </p>
+                  <p className="text-sm text-muted">{t("locations.noIndustry")}</p>
                 ) : (
                   <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={industryChart} layout="vertical" margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
@@ -332,10 +324,7 @@ export default function LocationsPage() {
                 <h3 className="mb-1 font-bold text-ink">Reach vs Engagement by City</h3>
                 <p className="mb-6 text-xs text-muted">Monthly average in millions</p>
                 {cityChart.length === 0 ? (
-                  <p className="text-sm text-muted">
-                    Chưa có số liệu tháng theo thành phố từ backend. Thêm số liệu vào SQLite thì biểu đồ sẽ hiện ở
-                    đây.
-                  </p>
+                  <p className="text-sm text-muted">{t("locations.noCities")}</p>
                 ) : (
                   <>
                     <ResponsiveContainer width="100%" height={250}>
@@ -403,9 +392,7 @@ export default function LocationsPage() {
               </div>
 
               {directory.length === 0 ? (
-                <p className="text-sm text-muted">
-                  Chưa có thư mục địa điểm từ backend. Thêm chuỗi/địa điểm vào SQLite thì danh sách sẽ hiện ở đây.
-                </p>
+                <p className="text-sm text-muted">{t("locations.noDirectory")}</p>
               ) : (
                 <>
                   <div className="space-y-0.5">

@@ -1,26 +1,26 @@
-import type { AdFormat, CaseStudy, SuggestedLocation } from "@/lib/types";
+"use client";
 
-// Thẻ hiển thị cho trang kết quả (F06–F09): chỉ nhận dữ liệu từ API,
-// không tự chứa số liệu. metricValue null thì hiển thị "—" chứ không bịa số.
-//
-// Theo hành vi click trên Figma (~14:03 +07, 18/11):
-// - Thẻ địa điểm chỉ hiển thị, không bấm được.
-// - Thẻ ad format bấm vào mở popup xem trước trên điện thoại.
-// - Thẻ case study bấm vào mở popup yêu cầu tài khoản advertiser.
-export function LocationCard({ location }: { location: SuggestedLocation }) {
+import Link from "next/link";
+import type { AdFormat, CaseStudy } from "@/lib/types";
+import { useLocale } from "./LocaleProvider";
+
+// Thẻ hiển thị cho trang kết quả Advertisers, theo đúng bố cục trang mẫu
+// Figma (đo lại 18/11/2026, viewport desktop rộng + PDF):
+// - Thẻ format: khối ảnh dọc 4:5, badge thời lượng góc trái, nút Play góc
+//   phải, nút đỏ "TÌM HIỂU NGAY →" đè cuối ảnh; dưới ảnh: tên, mô tả,
+//   hàng "Engagement xx%" (nhãn trái, số đỏ phải).
+// - Thẻ case study: banner ảnh ngang, tên + ngành phủ trắng trên ảnh;
+//   dưới: headline stat đỏ, mô tả, link xem đầy đủ.
+// Ảnh creative thật chưa có (file ảnh nhị phân không push được qua snapshot)
+// nên khối ảnh format dùng gradient giữ chỗ — thay bằng ảnh khi có asset.
+// Bấm vào thẻ format mở popup xem trước; bấm thẻ case study mở popup yêu
+// cầu tài khoản advertiser. Mọi thẻ chỉ nhận dữ liệu từ API, không tự bịa số.
+
+function PlayIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
-    <article className="rounded-2xl border border-border p-5">
-      <h3 className="font-semibold text-ink">{location.name}</h3>
-      <p className="mt-1 text-sm text-muted">
-        {location.area}, {location.city}
-      </p>
-      <p className="mt-3 text-sm text-muted">
-        Reach:{" "}
-        <span className="font-semibold text-ink">
-          {location.reach === null ? "—" : `${(location.reach / 1_000_000).toFixed(1)}M`}
-        </span>
-      </p>
-    </article>
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M8 5.5v13l11-6.5-11-6.5Z" />
+    </svg>
   );
 }
 
@@ -32,20 +32,50 @@ export function AdFormatCard({
   onPreview: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onPreview}
-      className="rounded-2xl border border-border p-5 text-left hover:border-brand"
-    >
-      <h3 className="font-semibold text-ink">{format.name}</h3>
-      <p className="mt-3 text-sm text-muted">
-        {format.metricLabel}:{" "}
-        <span className="font-semibold text-brand">
-          {format.metricValue === null ? "—" : `${format.metricValue}%`}
+    <article className="rounded-2xl border border-border bg-white p-3">
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={`${format.name} — xem trước`}
+        onClick={onPreview}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onPreview();
+          }
+        }}
+        className="relative aspect-[4/5] cursor-pointer overflow-hidden rounded-xl bg-gradient-to-b from-brand/15 via-[#FCE7E8] to-[#F4F4F7] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+      >
+        {format.durationSeconds !== null && format.durationSeconds !== undefined && (
+          <span className="absolute left-2.5 top-2.5 rounded-full bg-black/55 px-2 py-0.5 text-xs font-medium text-white">
+            {format.durationSeconds}s
+          </span>
+        )}
+        <span className="absolute right-2.5 top-2.5 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-ink">
+          <PlayIcon />
+          Play
         </span>
-      </p>
-      <p className="mt-3 text-sm font-medium text-brand">Xem trước →</p>
-    </button>
+        <Link
+          href="/contact"
+          onClick={(event) => event.stopPropagation()}
+          className="absolute inset-x-3 bottom-3 rounded-lg bg-brand py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
+        >
+          TÌM HIỂU NGAY →
+        </Link>
+      </div>
+      <div className="px-1 pb-1 pt-3">
+        <h3 className="font-semibold text-ink">{format.name}</h3>
+        {format.description && (
+          <p className="mt-1 min-h-10 text-sm leading-5 text-muted">{format.description}</p>
+        )}
+        <div className="mt-3 flex items-center justify-between border-t border-divider pt-2.5">
+          <span className="text-sm text-muted">{format.metricLabel}</span>
+          <span className="text-sm font-bold text-brand">
+            {format.metricValue === null ? "—" : `${format.metricValue}%`}
+          </span>
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -56,21 +86,41 @@ export function CaseStudyCard({
   study: CaseStudy;
   onRequestAccess: () => void;
 }) {
+  const { t } = useLocale();
+  // Headline theo Figma: "+340% Brand Recall" — metricValue là % tăng,
+  // metricLabel là tên chỉ số (quy ước nhập liệu trên Strapi, xem SETUP.md).
+  const value =
+    study.metricValue === null
+      ? null
+      : Number.isInteger(study.metricValue)
+        ? String(study.metricValue)
+        : study.metricValue.toFixed(1);
+  const headline =
+    value === null ? study.metricLabel : `+${value}% ${study.metricLabel}`;
   return (
     <button
       type="button"
       onClick={onRequestAccess}
-      className="rounded-2xl border border-border p-5 text-left hover:border-brand"
+      className="block w-full overflow-hidden rounded-2xl border border-border bg-white text-left hover:border-brand"
     >
-      <p className="text-xs font-semibold tracking-widest text-brand uppercase">{study.industry}</p>
-      <h3 className="mt-2 font-semibold text-ink">{study.title}</h3>
-      <p className="mt-3 text-sm text-muted">
-        {study.metricLabel}:{" "}
-        <span className="font-semibold text-brand">
-          {study.metricValue === null ? "—" : `${study.metricValue}%`}
-        </span>
-      </p>
-      <p className="mt-3 text-sm font-medium text-brand">Xem case study đầy đủ →</p>
+      <div className="relative h-36">
+        {study.coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={study.coverUrl} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="h-full w-full bg-gradient-to-br from-brand/25 via-[#FCE7E8] to-[#F4F4F7]" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+        <div className="absolute bottom-3 left-4">
+          <p className="font-bold text-white">{study.title}</p>
+          <p className="text-xs text-white/80">{study.industry}</p>
+        </div>
+      </div>
+      <div className="p-4">
+        {headline && <p className="font-bold text-brand">{headline}</p>}
+        {study.summary && <p className="mt-1 text-sm leading-5 text-muted">{study.summary}</p>}
+        <p className="mt-2 text-sm font-medium text-brand">{t("result.viewStudy")}</p>
+      </div>
     </button>
   );
 }
