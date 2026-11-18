@@ -19,6 +19,13 @@ function formatCompact(value: number | null): string {
   return value.toLocaleString("en-US");
 }
 
+// Lượt kết nối hiển thị số nguyên đầy đủ (25400000) theo yêu cầu của tran
+// 23:00 +07 18/11 — không rút gọn dạng 25.4M như các ô khác.
+function formatInteger(value: number | null): string {
+  if (value === null || value === undefined) return "—";
+  return String(Math.trunc(value));
+}
+
 const ICONS: Record<string, React.ReactNode> = {
   users: (
     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
@@ -74,7 +81,7 @@ export default function StatsStrip() {
   }, [locale, t]);
 
   const cells: { label: string; icon: string; value: (data: NetworkStats) => string }[] = [
-    { label: t("stats.connections"), icon: "users", value: (d) => formatCompact(d.connections) },
+    { label: t("stats.connections"), icon: "users", value: (d) => formatInteger(d.connections) },
     { label: t("stats.provinces"), icon: "pin", value: (d) => `${formatCompact(d.provinces)}/63` },
     { label: t("stats.chains"), icon: "chain", value: (d) => `${formatCompact(d.chains)}+` },
     { label: t("stats.venues"), icon: "bolt", value: (d) => formatCompact(d.venues) },

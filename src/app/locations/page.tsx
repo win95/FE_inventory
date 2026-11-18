@@ -224,17 +224,23 @@ export default function LocationsPage() {
       }));
   }, [state]);
 
-  // Số hiển thị dạng gọn như trên trang mẫu Figma (25.4M, 10,953+).
+  // Số hiển thị dạng gọn như trên trang mẫu Figma (25.4M, 10,953+) —
+  // trừ Lượt kết nối hiển thị số nguyên đầy đủ (25400000) theo yêu cầu
+  // của tran 23:00 +07 18/11.
   const formatCompact = (value: number | null, plus = false) => {
     if (value === null || value === undefined) return "—";
     const text = value >= 1_000_000 ? `${(value / 1_000_000).toFixed(1)}M` : value.toLocaleString("en-US");
     return plus ? `${text}+` : text;
   };
+  const formatInteger = (value: number | null) => {
+    if (value === null || value === undefined) return "—";
+    return String(Math.trunc(value));
+  };
 
   const statsCells =
     state.status === "ready" && state.stats
       ? [
-          { label: t("stats.connections"), icon: "users" as const, value: formatCompact(state.stats.connections) },
+          { label: t("stats.connections"), icon: "users" as const, value: formatInteger(state.stats.connections) },
           { label: t("stats.provinces"), icon: "pin" as const, value: `${formatCompact(state.stats.provinces)}/63` },
           { label: t("stats.chains"), icon: "building" as const, value: `${formatCompact(state.stats.chains)}+` },
           { label: t("stats.venues"), icon: "zap" as const, value: formatCompact(state.stats.venues, true) },
