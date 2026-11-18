@@ -296,7 +296,7 @@ function AdvertisersContent({ prompt }: { prompt: string }) {
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Case Studies</h2>
         {studies.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">
-            Chưa có case study trong database. Thêm bản ghi vào SQLite thì lưới case study sẽ hiện ở đây.
+            Chưa có case study nào được đăng trên Strapi. Đăng bài Case Study trên Strapi và Publish thì lưới case study sẽ hiện ở đây.
           </p>
         ) : (
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

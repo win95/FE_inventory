@@ -8,7 +8,7 @@ Strapi CMS + Docker Compose. Đọc hết mục 1 (trạng thái) trước khi c
 | Thành phần | Trạng thái | Ghi chú |
 |---|---|---|
 | Frontend Next.js (`~/workspace/new-project`, repo này) | ✅ Xong, đã push | 5 route: `/`, `/advertisers`, `/contact`, `/locations`, `/icon.svg`. `npm run lint` sạch, `npm run build` pass. |
-| Backend FastAPI + SQLite | ❌ Chưa có code | Chỉ có hợp đồng API mà Frontend đang gọi (mục 3). Cần dựng theo khung ở mục 3 rồi mới có dữ liệu thật. |
+| Backend FastAPI + SQLite | ✅ Đã có code (`backend/`) | Chạy trên host theo mục 5. Chưa có dữ liệu thật trong SQLite — cần nhập dữ liệu thử nghiệm (mục 5.5) thì các khối mới hiện số. |
 | Strapi CMS + Postgres | ❌ Chưa dựng | Cần scaffold theo mục 4. Chưa có content type, chưa có bài viết nào. |
 | Dữ liệu SQLite / Strapi | ❌ Chưa có | Database rỗng → giao diện hiện trạng thái rỗng/lỗi rõ ràng, không tự điền số. Đây là hành vi đúng theo thiết kế, không phải lỗi. |
 
@@ -88,23 +88,23 @@ Nút đăng nhập Google đang disabled cho tới khi backend cấu hình xong 
 
 ## 5. Backend FastAPI + SQLite (chạy trên host, ngoài Compose)
 
-Chưa có code backend trong repo — dựng theo khung dưới đây, khớp đúng hợp
-đồng API mà Frontend đang gọi. Đặt code backend ở một thư mục riêng ngoài
-repo Frontend này (ví dụ `~/workspace/awing-backend/`), vì repo này chỉ chứa
-Frontend.
+Code backend đã có trong repo, ở `backend/` (FastAPI + SQLite, chạy trên
+host, ngoài Compose). Khởi tạo và chạy:
 
 ### 5.1. Khởi tạo
 
 ```bash
+cd backend
 python3 -m venv .venv
 source .venv/bin/activate
-pip install fastapi "uvicorn[standard]" pydantic
+pip install -r requirements.txt
+cp .env.example .env   # sửa DATABASE_PATH, PORT, secret khi cần
 ```
 
 ### 5.2. Chạy
 
 ```bash
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 SQLite: một file duy nhất, ví dụ `awing.db` đặt cạnh code backend. Backend
@@ -121,8 +121,11 @@ Base URL: `NEXT_PUBLIC_API_BASE_URL`. Tất cả trả JSON. CORS phải mở ch
 | `GET` | `/api/network-stats` | Dải số liệu, màn Location Network | `{ connections, provinces, chains, venues }` — null nếu chưa có. |
 | `GET` | `/api/coverage` | Heatmap, màn Location Network | `{ provinces: [{ province, level, venues }], venueTypes: [{ type, count }], directory?, industryStats? }`. `directory` = thư mục địa điểm `{ name, category, venues }`; `industryStats` = số liệu theo ngành `{ industry, engagement, reach }`. Hai trường sau không có thì Frontend tự ẩn khối tương ứng. |
 | `POST` | `/api/suggest` | Trang `/advertisers` | Body `{ prompt }`. Trả `{ overview: { locations, venues, reach, engagement, offPeak }, locations: [{ name, area, city, reach }], formats: [{ name, metricLabel, metricValue, durationSeconds? }], cities?: [{ name, reach, engagements, impressionsPerDay }] }`. `cities` để chip thành phố bật/tắt tính lại tổng. |
-| `GET` | `/api/case-studies` | Trang `/advertisers` | Mảng `{ title, industry, metricLabel, metricValue }`. |
 | `POST` | `/api/leads` | Lead form (trang chủ) | Body `{ name, email, phone, message }`. Ghi vào SQLite, trả 200/201 khi nhận. |
+
+Case study **không** qua backend này: Frontend lấy qua Strapi REST
+(`GET /api/case-studies` trên Strapi, chỉ bản published), theo ranh giới
+đã chốt ở Plan §6.
 | `POST` | `/api/contact` | Form Contact Us (`/contact`) | Body `{ type, name, email, phone, message }`. Ghi vào SQLite. |
 | `GET` | `/api/events/stats` | Realtime (SSE) | Server-Sent Events, mỗi sự kiện là một full snapshot `NetworkStats`. Xem mục 5.4. |
 | `GET` | `/api/auth/google` | Nút đăng nhập Google | Bắt đầu luồng OAuth Google, callback về Frontend. Cần `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (tạo trên Google Cloud Console) và redirect URI khớp với cấu hình. |
@@ -143,6 +146,20 @@ Base URL: `NEXT_PUBLIC_API_BASE_URL`. Tất cả trả JSON. CORS phải mở ch
   mỗi 60 giây.
 - Webhook từ Strapi (khi editor Publish) cũng đi qua vòng lặp này: FastAPI
   nhận tín hiệu rồi đẩy sự kiện để Frontend fetch lại nội dung từ Strapi.
+
+### 5.5. Nhập dữ liệu thử nghiệm vào SQLite
+
+Không có dữ liệu mẫu trong code. Điền dữ liệu thử nghiệm vào các file CSV
+trong `backend/scripts/data/` (hiện chỉ có dòng header), rồi chạy:
+
+```bash
+cd backend
+python scripts/import_csv.py
+```
+
+Chạy lại nhiều lần đều an toàn (ghi đè theo khóa chính). Hoặc thao tác trực
+tiếp bằng `sqlite3 awing.db`. Database rỗng thì các endpoint trả rỗng/null
+và giao diện hiện trạng thái rỗng — là đúng theo thiết kế.
 
 ## 6. Strapi CMS + Postgres (trong Docker Compose)
 
