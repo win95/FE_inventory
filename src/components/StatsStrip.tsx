@@ -82,7 +82,7 @@ export default function StatsStrip() {
 
   const cells: { label: string; icon: string; value: (data: NetworkStats) => string }[] = [
     { label: t("stats.connections"), icon: "users", value: (d) => formatInteger(d.connections) },
-    { label: t("stats.provinces"), icon: "pin", value: (d) => `${formatCompact(d.provinces)}/63` },
+    { label: t("stats.provinces"), icon: "pin", value: (d) => `${formatCompact(d.provinces)}/33` },
     { label: t("stats.chains"), icon: "chain", value: (d) => `${formatCompact(d.chains)}+` },
     { label: t("stats.venues"), icon: "bolt", value: (d) => formatCompact(d.venues) },
   ];

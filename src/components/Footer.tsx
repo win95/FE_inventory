@@ -5,8 +5,6 @@ import { usePathname } from "next/navigation";
 import ContactInfo from "./ContactInfo";
 import { useLocale } from "./LocaleProvider";
 
-// Footer (F16). Nội dung liên hệ lấy đúng trang Contact Us chính thức của
-// AWING (https://awing.vn/vi/contact-us), kiểm tra trực tiếp ngày 18/11/2026.
 // Trang mẫu Figma không có footer nên màu footer theo cùng bảng màu Figma
 // (nền trắng, viền #EBEBEB, chữ #6B6B80, tiêu đề #0D0D14).
 // Link nhanh chỉ gồm các trang đã có thật: Home, Advertisers, Contact Us.
@@ -41,7 +39,7 @@ export default function Footer() {
         </div>
       </div>
       <div className="border-t border-divider py-4 text-center text-xs text-muted">
-        AWING — Home Public (FE_inventory)
+        AWING — Home Public
       </div>
     </footer>
   );

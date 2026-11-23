@@ -251,7 +251,7 @@ export default function LocationsPage() {
     state.status === "ready" && state.stats
       ? [
           { label: t("stats.connections"), icon: "users" as const, value: formatInteger(state.stats.connections) },
-          { label: t("stats.provinces"), icon: "pin" as const, value: `${formatCompact(state.stats.provinces)}/63` },
+          { label: t("stats.provinces"), icon: "pin" as const, value: `${formatCompact(state.stats.provinces)}/32` },
           { label: t("stats.chains"), icon: "building" as const, value: `${formatCompact(state.stats.chains)}+` },
           { label: t("stats.venues"), icon: "zap" as const, value: formatCompact(state.stats.venues, true) },
         ]

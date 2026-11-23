@@ -5,9 +5,6 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import LocaleProvider from "@/components/LocaleProvider";
 
-// Font đo được trên trang mẫu Figma: Inter cho nội dung,
-// Barlow Condensed Black cho tiêu đề lớn. Cả hai đều có subset
-// vietnamese để dấu tiếng Việt hiển thị đúng.
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin", "vietnamese"],
@@ -20,9 +17,9 @@ const barlowCondensed = Barlow_Condensed({
 });
 
 export const metadata: Metadata = {
-  title: "AWING — Kênh marketing theo vị trí",
+  title: "AWING — Mobile Location-Based Marketing",
   description:
-    "AWING — kênh marketing theo vị trí trên di động tại Việt Nam: mô tả chiến dịch, nhận gợi ý địa điểm và hình thức quảng cáo, chạy và đo lường theo thời gian thực.",
+    "AWING — Describe your campaign in plain words, get location and ad format suggestions, then run and measure in real time.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -34,7 +31,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col bg-page text-ink">
         <LocaleProvider>
           <Header />
-          {/* Header fixed như trang mẫu Figma nên nội dung cần pt-16. */}
           <div className="flex-1 pt-16">{children}</div>
           <Footer />
         </LocaleProvider>

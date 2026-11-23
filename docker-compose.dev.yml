@@ -1,0 +1,38 @@
+# Chế độ DEV: sửa code trên máy là thấy ngay trên site đang chạy trong Docker.
+#
+# Chạy:  docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+# Quay về bản production:  docker compose up -d --build
+#
+# - frontend: chạy `next dev` (hot reload), mount toàn bộ source vào /app.
+# - strapi:   chạy `strapi develop` (tự reload khi sửa src/config, bật
+#             Content-Type Builder; schema tạo trong admin được ghi thẳng về ./cms/src).
+# node_modules, .next, dist, .strapi dùng volume riêng trong container để không
+# đè/lẫn với bản cài trên host (alpine vs glibc).
+services:
+  frontend:
+    build:
+      context: .
+      target: deps
+    command: ["npx", "next", "dev", "-H", "0.0.0.0", "-p", "3000"]
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+      NEXT_PUBLIC_STRAPI_URL: ${NEXT_PUBLIC_STRAPI_URL:-http://localhost:1337}
+      # Bật nếu sửa file mà không thấy reload (thường chỉ cần trên Docker Desktop/WSL):
+      # WATCHPACK_POLLING: "true"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+      - /app/.next
+
+  strapi:
+    command: ["npm", "run", "develop"]
+    environment:
+      NODE_ENV: development
+      # CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./cms:/opt/app
+      - /opt/app/node_modules
+      - /opt/app/dist
+      - /opt/app/.strapi
+      - strapi-uploads:/opt/app/public/uploads
