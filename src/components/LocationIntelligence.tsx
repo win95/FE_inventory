@@ -6,9 +6,11 @@ import { ApiError, fetchCoverage } from "@/lib/api";
 import type { CoverageResponse, LoadState } from "@/lib/types";
 import HeatmapCard from "./HeatmapCard";
 import { useLocale } from "./LocaleProvider";
+import { withLocale } from "@/lib/i18n";
+
 
 // Location Intelligence + bản đồ nhiệt (F04) trên trang chủ, theo trang
-// mẫu Figma: eyebrow đỏ in hoa, tiêu đề Barlow Condensed Black in hoa,
+// mẫu Figma: eyebrow đỏ in hoa, tiêu đề Be Vietnam Pro Black in hoa,
 // thẻ mini trắng số đỏ, nút Explore đỏ, thẻ heatmap (xem HeatmapCard).
 // Dữ liệu phủ sóng lấy từ backend (SQLite) — database rỗng thì hiện trạng
 // thái rỗng, không tự điền số.
@@ -90,7 +92,7 @@ export default function LocationIntelligence({ showExploreLink = true }: { showE
           )}
 
           {showExploreLink && (
-            <Link href="/locations" className="mt-6 inline-block rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
+            <Link href={withLocale("/locations", locale)} className="mt-6 inline-block rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
               {t("coverage.exploreFull")}
             </Link>
           )}

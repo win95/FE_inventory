@@ -3,6 +3,8 @@
 import Link from "next/link";
 import type { AdFormat, CaseStudy } from "@/lib/types";
 import { useLocale } from "./LocaleProvider";
+import { withLocale } from "@/lib/i18n";
+
 
 // Thẻ hiển thị cho trang kết quả Advertisers, theo đúng bố cục trang mẫu
 // Figma (đo lại 18/11/2026, viewport desktop rộng + PDF):
@@ -31,7 +33,7 @@ export function AdFormatCard({
   format: AdFormat;
   onPreview: () => void;
 }) {
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   return (
     <article className="rounded-2xl border border-border bg-white p-3">
       <div
@@ -45,7 +47,7 @@ export function AdFormatCard({
             onPreview();
           }
         }}
-        className="relative aspect-[4/5] cursor-pointer overflow-hidden rounded-xl bg-gradient-to-b from-brand/15 via-[#FCE7E8] to-[#F4F4F7] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        className="relative aspect-[4/5] cursor-pointer overflow-hidden rounded-xl bg-gradient-to-b from-brand/15 via-tile to-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         {format.durationSeconds !== null && format.durationSeconds !== undefined && (
           <span className="absolute left-2.5 top-2.5 rounded-full bg-black/55 px-2 py-0.5 text-xs font-medium text-white">
@@ -57,7 +59,7 @@ export function AdFormatCard({
           {t("adv.play")}
         </span>
         <Link
-          href="/contact"
+          href={withLocale("/contact", locale)}
           onClick={(event) => event.stopPropagation()}
           className="absolute inset-x-3 bottom-3 rounded-lg bg-brand py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
         >
@@ -109,7 +111,7 @@ export function CaseStudyCard({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={study.coverUrl} alt="" className="h-full w-full object-cover" />
         ) : (
-          <div className="h-full w-full bg-gradient-to-br from-brand/25 via-[#FCE7E8] to-[#F4F4F7]" />
+          <div className="h-full w-full bg-gradient-to-br from-brand/25 via-tile to-surface" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
         <div className="absolute bottom-3 left-4">

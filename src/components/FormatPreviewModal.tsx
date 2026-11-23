@@ -3,6 +3,8 @@
 import Link from "next/link";
 import type { AdFormat } from "@/lib/types";
 import { useLocale } from "./LocaleProvider";
+import { withLocale } from "@/lib/i18n";
+
 
 // Popup xem trước định dạng quảng cáo như trên Figma: khung điện thoại với
 // tên format, thời lượng và chỉ số. Nút "TÌM HIỂU NGAY" trên trang mẫu bấm
@@ -14,7 +16,7 @@ export default function FormatPreviewModal({
   format: AdFormat;
   onClose: () => void;
 }) {
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
@@ -54,7 +56,7 @@ export default function FormatPreviewModal({
         </div>
 
         <Link
-          href="/contact"
+          href={withLocale("/contact", locale)}
           className="mt-5 block rounded-lg bg-brand py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
         >
           {t("modal.contactCta")}

@@ -1,7 +1,7 @@
 // How AWING Works — quy trình 3 bước (F05), theo đúng trang mẫu Figma:
-// eyebrow + tiêu đề căn giữa (tiêu đề Barlow Condensed Black in hoa),
-// thẻ trắng viền #EBEBEB, icon đỏ trên nền hồng nhạt góc trái, số thứ tự
-// lớn màu xám nhạt #DADADF góc phải. Nội dung lấy đúng những gì quan sát
+// eyebrow + tiêu đề căn giữa (tiêu đề Be Vietnam Pro Black in hoa),
+// thẻ trắng viền #E3E5EA, icon đỏ trên nền hồng nhạt góc trái, số thứ tự
+// lớn màu xám nhạt #E3E5EA góc phải. Nội dung lấy đúng những gì quan sát
 // được trên Figma; một số câu mô tả trên mẫu bị cắt ngắn nên không tự viết
 // tiếp — chờ xin copy đầy đủ (mục 8 của Plan). Tiêu đề/mô tả 3 bước dịch
 // theo locale (bản EN lấy đúng copy gốc của Figma).

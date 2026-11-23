@@ -1,39 +1,80 @@
 @import "tailwindcss";
 
-/* Design tokens đo trực tiếp trên trang mẫu Figma
-   (plank-metal-22306544.figma.site, 18/11/2026, viewport 1919px):
-   - Nền trang #F4F4F7, chữ #0D0D14, chữ phụ #6B6B80
-   - Đỏ thương hiệu #E8212B (nhất quán mọi nút/link/số đỏ)
-   - Font: Inter (nội dung) + Barlow Condensed Black (tiêu đề lớn)
-   - Figma không có dark mode nên toàn site chỉ dùng bảng màu sáng này. */
+/* Design token R1 — Docs_AWING_Website2.0 §7.2 + §7.3, kiểm chứng từ bản build
+   Figma mới (event-lint-76243320.figma.site, 23/11/2026):
+   - Đỏ logo #D2232A (dark #9B0E0E, light #F07355); trung tính: nền #FFFFFF /
+     #F5F6F8, chữ #111318 / #5B606B, viền #E3E5EA
+   - 6 màu sản phẩm (primary/dark/light) theo đúng thứ tự tài liệu:
+     Location #E31E24, Retail #F36C02, Measurement #F5C400, Insights #10AD5E,
+     Network #0F57EE, Ads Manager #703FBC; -on là màu chữ trên nền primary
+     (Measurement luôn dùng chữ tối #111318)
+   - Font: Be Vietnam Pro (tiêu đề) + Inter (nội dung/số, tabular-nums)
+   - Token cũ của Figma plank-metal (đỏ #E8212B, Barlow Condensed) đã bỏ. */
 @theme inline {
-  --color-page: #f4f4f7;
-  --color-ink: #0d0d14;
-  --color-muted: #6b6b80;
-  --color-brand: #e8212b;
-  --color-brand-dark: #d31f27;
-  --color-card: #ffffff;
-  --color-border: #ebebeb;
-  --color-divider: #eaeaea;
-  --color-outline: #e0e0e3;
-  --color-badge-bg: #f3e4e7;
-  --color-badge-border: #efb2b7;
-  --color-tile: #fce7e8;
+  --color-page: #ffffff;
+  --color-surface: #f5f6f8;
+  --color-ink: #111318;
+  --color-muted: #5b606b;
+  --color-brand: #d2232a;
+  --color-brand-dark: #9b0e0e;
+  --color-brand-light: #f07355;
+  --color-border: #e3e5ea;
+  --color-divider: #e3e5ea;
+  --color-outline: #e3e5ea;
+  --color-line: #e3e5ea;
+  --color-badge-bg: #fde8e9;
+  --color-badge-border: #f07355;
+  --color-tile: #fde8e9;
   --color-tile-soft: #fde8e9;
-  --color-chip-bg: #f3dee2;
-  --color-chip-border: #ef9299;
-  --color-stepnum: #dadadf;
-  --color-heat-1: #fad3d5;
-  --color-heat-2: #f6a6aa;
-  --color-heat-3: #f17a80;
-  --color-heat-4: #ed4d55;
-  --color-heat-5: #e8212b;
+  --color-chip-bg: #fde8e9;
+  --color-chip-border: #f07355;
+  --color-stepnum: #e3e5ea;
+  /* Màu sản phẩm — Docs §7.2. */
+  --color-p-location: #e31e24;
+  --color-p-location-dark: #b4141a;
+  --color-p-location-light: #fde8e9;
+  --color-p-location-on: #ffffff;
+  --color-p-retail: #f36c02;
+  --color-p-retail-dark: #b84f00;
+  --color-p-retail-light: #fff0e2;
+  --color-p-retail-on: #ffffff;
+  --color-p-measurement: #f5c400;
+  --color-p-measurement-dark: #8a6d00;
+  --color-p-measurement-light: #fff8d6;
+  --color-p-measurement-on: #111318;
+  --color-p-insight: #10ad5e;
+  --color-p-insight-dark: #0a7a42;
+  --color-p-insight-light: #e1f7ec;
+  --color-p-insight-on: #ffffff;
+  --color-p-network: #0f57ee;
+  --color-p-network-dark: #0a3ca8;
+  --color-p-network-light: #e4ecfe;
+  --color-p-network-on: #ffffff;
+  --color-p-adsmanager: #703fbc;
+  --color-p-adsmanager-dark: #4f2a8a;
+  --color-p-adsmanager-light: #efe8fa;
+  --color-p-adsmanager-on: #ffffff;
   --font-sans: var(--font-inter);
-  --font-display: var(--font-barlow-condensed);
+  --font-display: var(--font-be-vietnam-pro);
+  /* Breakpoint 1440 của tài liệu (§7.3); các breakpoint còn lại giữ mặc định Tailwind. */
+  --breakpoint-3xl: 90rem;
 }
 
 body {
   background: var(--color-page);
   color: var(--color-ink);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Motion (FE 10): tôn trọng prefers-reduced-motion — mọi hiệu ứng chuyển
+   động/transition về gần như tức thì khi người dùng bật giảm chuyển động. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

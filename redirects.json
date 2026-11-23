@@ -1,0 +1,16 @@
+{
+  "note": "Bang 301 (FE 13, Docs 4.3) — URL cu -> URL moi, vinh vien. Bang day du 572 URL do BA lap (quyet dinh #5 trong ke hoach R1) se bo sung vao day; script kiem tra tu dong: scripts/test-redirects.mjs (npm run test:redirects). Dia chi da biet tu site live awing.vn: /vi/contact-us la URL form lien he cu, nay la /vi/contact (va /en/...).",
+  "version": 1,
+  "redirects": [
+    {
+      "source": "/vi/contact-us",
+      "destination": "/vi/contact",
+      "permanent": true
+    },
+    {
+      "source": "/en/contact-us",
+      "destination": "/en/contact",
+      "permanent": true
+    }
+  ]
+}

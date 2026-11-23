@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ApiError, fetchNetworkStats, subscribeNetworkStats } from "@/lib/api";
 import type { LoadState, NetworkStats } from "@/lib/types";
 import { useLocale } from "./LocaleProvider";
+import { withLocale } from "@/lib/i18n";
+
 
 // Dải số liệu tin cậy (F03), theo đúng trang mẫu Figma: dải trắng phẳng,
 // mỗi mục có icon đỏ trên nền hồng nhạt, số đen in đậm, nhãn xám.
@@ -164,7 +166,7 @@ export default function StatsStrip() {
           {t("stats.realtimeNote")}
         </p>
         <div className="mt-4 flex justify-center">
-          <Link href="/locations" className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
+          <Link href={withLocale("/locations", locale)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
             {t("stats.explore")}
           </Link>
         </div>

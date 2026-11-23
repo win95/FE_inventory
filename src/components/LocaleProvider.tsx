@@ -1,47 +1,22 @@
 // Locale giao diện (vi/en) — dùng chung cho toàn site.
 //
-// Mặc định vi (khớp locale mặc định của Strapi). Locale lưu trong
-// localStorage nên lần sau mở lại vẫn giữ. Đọc qua useSyncExternalStore
-// (như AuthSession đọc token): server render vi, client hydrate rồi đọc
-// locale đã lưu — không setState trong effect, không lệch hydration.
-// Đổi locale thì lưu lại + đổi lang của <html>.
-// Mọi component lấy locale qua useLocale() và dịch chữ bằng t(key).
+// Từ R1 locale lấy từ đoạn [locale] trên URL (Docs §4.2, §8.4), không còn
+// từ localStorage: layout [locale] kiểm tra locale rồi truyền xuống đây.
+// Nút EN/VI chỉ đổi đoạn locale trên URL (router.replace) + ghi cookie
+// awing_locale để middleware nhớ lần sau mở "/" vẫn giữ. Mọi component
+// lấy locale qua useLocale() và dịch chữ bằng t(key) như trước — hợp đồng
+// của hook không đổi.
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useSyncExternalStore,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import {
   DEFAULT_LOCALE,
-  LOCALE_STORAGE_KEY,
-  parseLocale,
+  LOCALE_COOKIE_KEY,
   translate,
   type DictKey,
   type Locale,
 } from "@/lib/i18n";
-
-const LOCALE_CHANGE_EVENT = "awing-locale-change";
-
-function getLocaleSnapshot(): Locale {
-  try {
-    return parseLocale(window.localStorage.getItem(LOCALE_STORAGE_KEY));
-  } catch {
-    return DEFAULT_LOCALE;
-  }
-}
-
-function subscribeLocaleChange(callback: () => void): () => void {
-  window.addEventListener("storage", callback);
-  window.addEventListener(LOCALE_CHANGE_EVENT, callback);
-  return () => {
-    window.removeEventListener("storage", callback);
-    window.removeEventListener(LOCALE_CHANGE_EVENT, callback);
-  };
-}
 
 interface LocaleValue {
   locale: Locale;
@@ -59,24 +34,34 @@ export function useLocale(): LocaleValue {
   return useContext(LocaleContext);
 }
 
-export default function LocaleProvider({ children }: { children: ReactNode }) {
-  const locale = useSyncExternalStore(
-    subscribeLocaleChange,
-    getLocaleSnapshot,
-    () => DEFAULT_LOCALE,
-  );
+export default function LocaleProvider({
+  locale,
+  children,
+}: {
+  locale: Locale;
+  children: ReactNode;
+}) {
+  const router = useRouter();
 
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
 
   const setLocale = (next: Locale) => {
+    if (next === locale) return;
     try {
-      window.localStorage.setItem(LOCALE_STORAGE_KEY, next);
+      document.cookie = `${LOCALE_COOKIE_KEY}=${next}; path=/; max-age=31536000; SameSite=Lax`;
     } catch {
-      // Không lưu được thì phiên này vẫn đổi, lần sau mở lại về vi.
+      // Không ghi được cookie thì lần này vẫn đổi, lần sau mở "/" về vi.
     }
-    window.dispatchEvent(new Event(LOCALE_CHANGE_EVENT));
+    const pathname = window.location.pathname;
+    const segments = pathname.split("/");
+    if (segments[1] === "vi" || segments[1] === "en") {
+      segments[1] = next;
+    } else {
+      segments.splice(1, 0, next);
+    }
+    router.replace(segments.join("/") + window.location.search);
   };
 
   const t = (key: DictKey, vars?: Record<string, string>) =>

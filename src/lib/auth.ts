@@ -87,14 +87,3 @@ export function clearToken(): void {
   }
   notifyAuthChange();
 }
-
-export function getSession(): AuthSession | null {
-  const token = getStoredToken();
-  if (!token) return null;
-  const session = parseSession(token);
-  if (!session) {
-    clearToken();
-    return null;
-  }
-  return session;
-}

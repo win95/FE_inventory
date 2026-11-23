@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { API_BASE_URL, isBackendConfigured } from "@/lib/api";
 import {
@@ -16,9 +16,10 @@ import { useLocale } from "./LocaleProvider";
 // Đọc ?auth_token= mà backend gắn sau khi Google callback xong, lưu vào
 // localStorage rồi dọn sạch khỏi URL. Phiên đọc qua useSyncExternalStore
 // nên đăng nhập/đăng xuất tự cập nhật mà không cần setState trong effect.
-// Đã đăng nhập thì hiện tên/email và nút Đăng xuất; chưa thì hiện nút đăng
-// nhập (disable rõ ràng khi backend chưa cấu hình). Dùng useSearchParams
-// nên phải nằm trong Suspense.
+// Đã đăng nhập thì hiện tên/email và nút Đăng xuất; chưa thì hiện nút Sign
+// in mở dropdown 2 lựa chọn (FE 16, Docs §4.1): khách hàng AWING qua
+// ACM/AAP (chưa có — SSO ở R4, hiện mờ) và tài khoản website qua Google
+// (đăng nhập hiện tại). Dùng useSearchParams nên phải nằm trong Suspense.
 function subscribeAuthChange(callback: () => void): () => void {
   window.addEventListener("storage", callback);
   window.addEventListener(AUTH_CHANGE_EVENT, callback);
@@ -84,12 +85,7 @@ function AuthSessionInner() {
   // viền border, chữ muted.
   if (isBackendConfigured()) {
     return (
-      <a
-        href={`${API_BASE_URL}/api/auth/google`}
-        className="rounded border border-border px-2.5 py-1.5 text-sm text-muted transition-colors hover:text-ink"
-      >
-        {t("auth.signInGoogle")}
-      </a>
+      <SignInMenu />
     );
   }
 
@@ -102,6 +98,61 @@ function AuthSessionInner() {
     >
       {t("auth.signInGoogle")}
     </button>
+  );
+}
+
+function SignInMenu() {
+  const { t } = useLocale();
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open ]);
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="true"
+        onClick={() => setOpen((prev) => !prev)}
+        className="rounded border border-border px-2.5 py-1.5 text-sm text-muted transition-colors hover:text-ink"
+      >
+        {t("nav.signIn")}
+      </button>
+      {open && (
+        <div className="absolute top-full right-0 z-50 mt-2 w-72 rounded-xl border border-border bg-white py-1 shadow-lg">
+          <span
+            title={t("nav.signInSoon")}
+            className="block cursor-not-allowed px-4 py-2.5 text-sm text-muted/50"
+          >
+            {t("nav.signInCustomer")}
+          </span>
+          <a
+            href={`${API_BASE_URL}/api/auth/google`}
+            onClick={() => setOpen(false)}
+            className="block px-4 py-2.5 text-sm text-muted hover:bg-surface hover:text-ink"
+          >
+            {t("nav.signInWebsite")}
+          </a>
+        </div>
+      )}
+    </div>
   );
 }
 

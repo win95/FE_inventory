@@ -225,21 +225,33 @@ trong `package.json` — image Docker không build native module này (trong
 Compose Strapi dùng Postgres); chỉ khi chạy thử bằng SQLite trên host mới
 cần cài tay (mục 6.4).
 
-### 6.1. Content types (đã khai sẵn trong code)
+### 6.1. Content types (R1-1, BE 1-10 — 13 loại, xem chi tiết `cms/README.md`)
 
 | Loại | Kiểu | Trường chính |
 |---|---|---|
-| Article (blog) | Collection Type | title, slug, cover (media), content (rich text), category, SEO component (metaTitle, metaDescription, keywords, ogImage) |
-| Case Study | Collection Type | title, industry, metricLabel, metricValue, cover, summary, SEO |
-| Product | Collection Type | name, slug, description, cover, link, SEO |
+| Article (= News) | Collection Type | title, slug, cover (media), content (rich text), category, publishedDate, market, SEO |
+| Case Study | Collection Type | title, industry, metricLabel, metricValue, cover, summary, market, SEO |
+| Product | Collection Type | name, slug, tagline, goal, description, color (enum 6 màu sản phẩm), order, cover, link, solutions (relation), blocks (dynamic zone), market, SEO |
+| Solution | Collection Type | name, slug, product (relation), summary, blocks (dynamic zone), market, SEO |
+| Ad Format | Collection Type | name, slug, durationSeconds, metricLabel, metricValue, description, solution (relation), market, SEO |
+| Resource | Collection Type | title, slug, type (report/paper/case-study), summary, content, cover, file (PDF), publishedDate, market, SEO |
+| Event | Collection Type | title, slug, description, startDate, endDate, mode, location, agenda, speakers, cover, market, SEO |
+| Job | Collection Type | title, slug, department, location, type, description, requirements, deadline, market, SEO |
+| Partner | Collection Type | name, slug, logo, website, category, description, market |
+| Customer | Collection Type | name, slug, logo, industry, testimonial, caseStudy (relation), market |
+| Data Snapshot | Single Type | snapshotDate, metrics (JSON), note |
+| Global | Single Type | siteName, contactEmail, defaultSeo, socialLinks |
 | Home | Single Type | heroTitle, heroSubtitle, statsNote, howItWorks (component lặp: stepTitle, stepText), SEO |
 
-Định nghĩa nằm trong `cms/src/api/<tên>/content-types/` và component dùng
-chung trong `cms/src/components/shared/` (`seo`, `how-it-works-step`).
+Định nghĩa nằm trong `cms/src/api/<tên>/content-types/`, component dùng
+chung trong `cms/src/components/shared/` (`seo`, `how-it-works-step`,
+`event-agenda-item`, `event-speaker`, `social-link`) và block components
+trong `cms/src/components/blocks/` (10 block của FE 9).
 Tất cả đều bật **Draft & Publish**: chỉ bản published mới tới Frontend.
 Muốn thêm/sửa trường thì sửa file schema rồi khởi động lại Strapi (hoặc
 dùng Content-Type Builder trong admin — Strapi tự ghi lại file schema).
-Bật **i18n** nếu sau này cần đa ngôn ngữ VI/EN.
+i18n EN + VI đã bật cho mọi loại (xem §6.6); trường `market` (enum
+vn/global/id/th, mặc định vn) có trên mọi Collection Type.
 
 ### 6.2. Quyền API public và webhook — tự động qua bootstrap
 
@@ -379,6 +391,196 @@ không có thẻ venue (đã bỏ theo quyết định của tran).
   yêu cầu tài khoản advertiser). Chưa có bài published trên Strapi thì
   hiện trạng thái rỗng. Footer ẩn ở trang này (Figma không có footer).
 
+### 6.9. R1-1: route /vi–/en, data layer Strapi, SEO framework (23/11/2026)
+
+- **Route locale (FE 4):** mọi trang nằm dưới `src/app/[locale]/`
+  (`/vi`, `/en`, `/vi/advertisers`...). `src/middleware.ts` chuyển đường
+  dẫn không tiền tố về `/{locale}` (ưu tiên cookie `awing_locale` do nút
+  EN/VI ghi, mặc định vi — không chuyển hướng theo IP). Locale lấy từ URL,
+  không còn từ localStorage; `LocaleProvider` nhận `locale` từ layout.
+  Mọi link nội bộ dùng `withLocale(path, locale)` trong `src/lib/i18n.ts`.
+- **Token mới (FE 3, Docs §7.2):** `src/app/globals.css` dùng đỏ logo
+  #D2232A, 6 màu sản phẩm (`--color-p-*`), font Be Vietnam Pro (tiêu đề)
+  + Inter; token Figma cũ (#E8212B, Barlow Condensed) đã bỏ.
+- **Data layer Strapi (FE 5):** `src/lib/strapi.ts` là client duy nhất cho
+  CMS — có type, lọc `locale` (+ `market` khi BE 5 thêm trường market),
+  fetch gắn tag `strapi:<collection>` khi chạy phía server; `src/lib/api.ts`
+  chỉ còn client FastAPI và re-export `fetchCaseStudies` /
+  `isStrapiConfigured` / `STRAPI_BASE_URL` nên import cũ không đổi.
+  `ApiError` tách sang `src/lib/errors.ts`.
+- **Revalidate (FE 5):** `POST /api/revalidate` với body
+  `{ secret, tag?, path? }`; secret lấy từ `REVALIDATE_SECRET` (để trống
+  thì 503, sai secret thì 401). FastAPI gọi endpoint này sau khi nhận
+  webhook publish của Strapi (BE 8) — không trỏ thẳng webhook Strapi vào
+  đây. Tag theo quy ước `strapi:<collection>`.
+- **SEO (FE 6):** `src/lib/seo.ts` — `pageMetadata()` (canonical tự trỏ +
+  hreflang vi/en/x-default + Open Graph), JSON-LD Organization + WebSite
+  gắn ở `[locale]/layout.tsx` (SearchAction thêm ở R1-5 khi `/search` có
+  thật). `src/app/sitemap.ts` (4 route tĩnh × 2 locale) và
+  `src/app/robots.ts` (chặn `/api/`) — route động bổ sung ở R1-3/R1-4.
+  Domain lấy từ `NEXT_PUBLIC_SITE_URL` (mặc định https://awing.vn).
+  Mỗi trang hiện tại có đúng 1 h1 (riêng /advertisers không có h1 theo
+  Figma). Lưu ý: `lang` của `<html>` trong HTML trả về vẫn là `vi`
+  (layout gốc tĩnh); `LocaleProvider` đổi `document.documentElement.lang`
+  theo locale ngay khi hydrate — SSR lang theo locale cần đưa layout
+  `[locale]` lên làm layout gốc, để sau nếu cần.
+- **Biến mới trong `.env.example`:** `NEXT_PUBLIC_SITE_URL`,
+  `REVALIDATE_SECRET` (đặt giá trị ngẫu nhiên dài; chỉ dùng phía server).
+
+### 6.10. R1-1: component dùng chung + block renderer + motion (FE 7-10, 23/11/2026)
+
+- **Component cơ bản (`src/components/ui/`):** Button (primary/outline/ghost/
+  subtle/light; href nội bộ → Next Link), Input, Select (select gốc), Tabs
+  (phím mũi tên đổi tab), Breadcrumb, Pagination (cửa sổ số trang),
+  Modal + Drawer (đóng bằng Escape/bấm nền, khóa cuộn body — hai modal cũ
+  AdvertiserAuthModal/FormatPreviewModal chưa có Escape, giữ nguyên tới khi
+  làm lại trang của chúng), Toast (`toast(msg)` + ToastViewport gắn ở layout).
+- **Component nội dung (`src/components/content/`):** ProductCard (theme màu
+  sản phẩm theo §7.2, href tuỳ chọn), ContentCard (cover hoặc gradient),
+  StatsCard (xu hướng tăng/giảm), LockedState (nội dung khoá, CTA về
+  /contact — R2 sẽ trỏ sang lead form popup).
+- **Block renderer (`src/components/blocks/BlockRenderer.tsx`, FE 9):** render
+  danh sách block Strapi dynamic zone (hero, opportunity, solutions,
+  how-to-plan, showcase, lead-form, rich-text, media, stats, cta); block lạ
+  hiện khung báo thay vì crash. Rich text nhận plain text (không HTML —
+  tránh sanitize; ánh xạ JSON rich text của Strapi làm cùng BE 6).
+- **Motion (FE 10):** Reveal (hiện dần khi cuộn tới, 300ms; không JS hoặc
+  bật giảm chuyển động thì nội dung vẫn hiện), Counter (đếm tới giá trị đích
+  khi cuộn tới; không dùng cho số liệu realtime vì SSE tick liên tục),
+  `usePrefersReducedMotion`, và khối `@media (prefers-reduced-motion: reduce)`
+  trong `globals.css`. Home bọc Reveal cho StatsStrip, LocationIntelligence,
+  HowItWorks. Hiệu ứng ribbon logo (Docs §7.4) chưa làm — cần thiết kế motion
+  từ Figma, không đoán.
+- **Trang tài liệu component:** `/vi/components` (và `/en/components`) — xem
+  + thử mọi component trên, kèm demo BlockRenderer đủ 10 loại block + 1
+  block lạ. Trang nội bộ: không có trong sitemap, không link từ nav.
+
+### 6.11. R1-1: bảo mật FE, tracking GTM, 301, trang lỗi (FE 11-14, 23/11/2026)
+
+- **Security headers (FE 11, `next.config.ts`):** CSP, nosniff,
+  X-Frame-Options DENY, Referrer-Policy, Permissions-Policy, HSTS. CSP cho
+  phép `unsafe-inline` cho script/style (Next hydrate + JSON-LD inline +
+  Tailwind) và `connect-src` tới origin FastAPI + Strapi đọc từ env
+  (dev không env thì thêm localhost:8000/1337) — đổi env API là phải
+  build/chạy lại để CSP nhận origin mới, nếu không fetch/SSE bị chặn.
+- **Sanitize (FE 11, `src/lib/sanitize.ts`):** DOMPurify, chỉ chạy ở client.
+  Dùng khi block rich-text / nội dung Strapi render HTML (R1-3/R1-4); hiện
+  tại rich-text chỉ nhận plain text nên chưa gọi tới. Không tự viết sanitize
+  bằng regex.
+- **Tracking (FE 12):** GTM load ở root layout chỉ khi có
+  `NEXT_PUBLIC_GTM_ID` (để trống = tắt hẳn); `trackEvent()` trong
+  `src/lib/tracking.ts` đẩy vào `window.dataLayer`. Sự kiện hiện có:
+  `lead_form_submit`, `contact_form_submit` — không gửi email/SĐT/họ tên.
+- **301 (FE 13):** bảng trong `redirects.json` (hiện 2 dòng: /vi|en/contact-us
+  → /vi|en/contact), `next.config.ts` đọc bảng này. Next.js trả **308**
+  (Permanent Redirect) cho `permanent: true` — Google coi 308 tương đương
+  301. Kiểm tra tự động: `npm run test:redirects [baseUrl]` (chấp nhận
+  301/308). Bảng đủ 572 URL do BA lập sau.
+- **Trang lỗi + health (FE 14):** `src/app/not-found.tsx` (404 song ngữ,
+  link /vi), `src/app/[locale]/error.tsx` (lỗi route + nút Thử lại),
+  `src/app/global-error.tsx` (lỗi root layout, style inline riêng),
+  `GET /api/health` → `{ status: "ok", time, uptimeSeconds }` (không kiểm
+  tra DB/backend — để phân biệt frontend chết hay backend chết).
+
+### 6.12. R1-1: Strapi content model 4 → 13 loại (BE 1-10, 23/11/2026)
+
+- **BE 1 — Strapi 5.62.0 đã là bản mới nhất**, không cần nâng cấp; plugin
+  i18n là lõi của Strapi 5, MCP đã bật từ trước (`config/server.ts`).
+- **BE 2-4 — 9 loại mới:** Solution, Ad Format, Resource, Event, Job,
+  Partner, Customer (Collection) + Data Snapshot, Global (Single). Product
+  mở rộng (tagline, goal, color enum 6 màu, order, solutions relation,
+  blocks dynamic zone). Article giữ làm **News** (thêm publishedDate) thay
+  vì tạo loại News riêng; Case Study thêm `market`.
+- **BE 5 — i18n + market:** mọi loại đều localize; trường `market` (enum
+  vn/global/id/th, mặc định vn) trên mọi Collection Type.
+- **BE 6 — dynamic zone:** 10 block component trong
+  `cms/src/components/blocks/` (hero, opportunity, solutions, how-to-plan,
+  showcase, lead-form, rich-text, media, stats, cta) — đúng danh sách của
+  FE 9 `BlockRenderer`. Product và Solution có trường `blocks`.
+- **Verify 23/11:** `npx tsc --noEmit` sạch; boot Strapi develop trên DB
+  SQLite tạm — 10 collection đều `GET /api/<tên>?locale=vi|en` → 200
+  (rỗng), 3 Single Type → 404 (đúng, chưa có bản ghi); bootstrap cấp đủ
+  quyền public cho 9 loại mới; kiểm tra bảng SQLite: đủ bảng cho 9 loại +
+  15 block component + 3 shared component mới + bảng nối relation.
+- **Chưa xong:** BE 7 migrate 118 bài news + 12 FAQ — cần bản xuất dữ liệu
+  từ site cũ (chưa có). BE 8: webhook Strapi → FastAPI đã có; phía FastAPI
+  dịch webhook thành lời gọi revalidate sang Next.js là việc của repo
+  BE_inventory. BE 9 (media object storage + CDN) và BE 10 (bảo mật admin
+  IP/VPN + role Editor/Author) là việc hạ tầng khi triển khai.
+
+### 6.13. R1-2: header/footer + lead form (FE 15-21, BE 11-14, 23/11/2026)
+
+Làm trên nhánh `r1-2` (tách từ main 89e8882/5a9eb91c). Toàn bộ R1-1 chưa
+push nên nhánh này mang theo cả R1-1.
+
+- **FE 15-17 — Header + toolbar + mobile:** menu cũ (Platform/Advertisers/
+  Wi-Fi Partners/About Us/Media) thay bằng IA Docs §4.1: Products (mega
+  menu 6 cột theo màu sản phẩm, mỗi cột tên + slogan + solutions), Data /
+  Insights & Resources / Company (dropdown, đóng bằng Escape + bấm ngoài).
+  Thanh công cụ: nút Search (mở lớp phủ), Sign in (dropdown 2 lựa chọn —
+  ACM/AAP mờ vì SSO ở R4, tài khoản website qua Google như cũ), nút EN/VI,
+  nút đỏ Get data (mở dialog lead). Mobile: nút hamburger mở Drawer (menu
+  theo nhóm + tìm kiếm + đổi ngôn ngữ + Get data) và thanh CTA cố định
+  dưới màn hình (Get data + Talk to us); layout chừa `pb-16 md:pb-0`.
+  `SiteChrome` gom Header + SearchOverlay + LeadDialog + MobileBottomBar
+  để chia sẻ trạng thái mở/đóng. Trang chưa có (R1-3/R1-4) hiện mờ + không
+  bấm được; chỉ /locations, /advertisers, /contact là link thật.
+- **FE 16 — Search overlay (vỏ R1-2):** gõ để lọc ngay trong danh mục tĩnh
+  (6 sản phẩm, 26 solution, 4 trang đã có) — không dấu, khớp cả từ khóa
+  tiếng Anh lẫn tiếng Việt (vd. gõ "heatmap" ra "Bản đồ nhiệt"). Tìm kiếm
+  đầy đủ qua API FastAPI ở R1-5 (FE 45-47).
+- **FE 18 — Footer 5 cột:** Thương hiệu (logo + giới thiệu + mạng xã hội
+  — chưa có URL thật, SOC-01 chưa chốt, hiện mờ) | Sản phẩm (6 link, mờ
+  tới R1-3) | Dữ liệu & Tài nguyên | Công ty + Hỗ trợ (FAQ, bảo mật, điều
+  khoản, Cài đặt cookie mở modal giải thích tracking đang tắt) | Liên hệ
+  (văn phòng + form nhận tin → `POST /api/newsletter` + chọn thị trường
+  awing.vn / awing.global · ID (R4) + đổi ngôn ngữ). Vẫn ẩn trên
+  /advertisers. Dọn 7 key i18n chết của header cũ (nav.platform,
+  nav.advertisers, nav.wifiPartners, nav.about, nav.media, nav.partners,
+  footer.quickLinks).
+- **FE 19-21 — Lead form dùng chung** (`LeadForm`, 2 chế độ embedded/popup):
+  bắt buộc họ tên/công ty/email/SĐT (E.164 — gõ 0xxx tự đổi sang +84...),
+  tùy chọn ngành (Retail/F&B/FMCG/Finance/Healthcare/Automotive),
+  thương hiệu, khu vực (6 chip), ghi chú; đồng ý tách 2 mục đích (liên hệ
+  bắt buộc, nhận tin tùy chọn); cảnh báo email cá nhân (không chặn);
+  UTM đọc từ URL + source (CTA đã mở form) + language/market là trường ẩn.
+  Luồng 3 bước: nhập thông tin → OTP 6 số qua email → bổ sung hồ sơ (chỉ
+  hiện trường tùy chọn còn trống, lưu qua PATCH kèm lead token; xong có
+  nút Đóng). Turnstile: có `NEXT_PUBLIC_TURNSTILE_SITE_KEY` thì widget
+  thật, chưa có thì hiện "mô phỏng" và backend chấp nhận (ghi log).
+  `LeadForm` dùng chung `id` theo chế độ (`lead-…` / `lead-popup-…`) vì
+  trang Home render cả form nhúng lẫn dialog.
+- **BE 11-14 (repo BE_inventory):** `POST /api/leads` mở rộng (validate
+  E.164, Turnstile, lưu lead + UTM + nhật ký đồng ý `lead_consents`, chống
+  trùng email chưa xác thực trong 10 phút, rate limit 5/phút/IP);
+  `POST /api/leads/{id}/verify` (OTP 6 số, hash SHA-256, hiệu lực 10 phút,
+  tối đa 5 lần sai, cấp JWT lead 60 phút; chỉ lead đã xác thực mới vào
+  hàng đợi CRM); `POST /api/leads/{id}/resend` (cooldown 60s, tối đa 5
+  mã/ngày); `PATCH /api/leads/{id}` (cần Bearer lead token);
+  `POST /api/newsletter` (202, trùng email vẫn 202). Email + CRM + Turnstile
+  đều **giả lập** (ghi log) theo quyết định fake API/data — xem README của
+  BE_inventory. Worker CRM trong tiến trình chạy mỗi 30s (cùng mẫu vòng lặp
+  realtime).
+- **2 lỗi CORS đã sửa trong lúc verify:** Chrome gửi preflight kèm
+  `Access-Control-Request-Private-Network` khi trang ở 127.0.0.1 gọi API
+  cổng khác — Starlette trả 400 nếu thiếu `allow_private_network=True`
+  (làm form lead không gửi được từ trình duyệt dù curl vẫn 200);
+  `allow_methods` thiếu `PATCH` nên bổ sung hồ sơ bị chặn. Cả 2 đã sửa
+  trong `app/main.py` của BE.
+- **Verify 23/11 (Playwright, 32/32):** mega menu 6 sản phẩm + solution,
+  Escape đóng, dropdown Data/Heatmap sang /locations, search "heatmap" ra
+  kết quả và điều hướng, dialog Get data → nhập form (SĐT 090… tự đổi
+  +84) → OTP (mã sai báo còn 4 lần thử, mã đúng từ log email giả lập →
+  đã xác thực → bổ sung hồ sơ → đã lưu), footer 5 cột + nhận tin thành
+  công, mobile drawer + CTA dưới. Lint 0 lỗi; build pass. 5 reqfail
+  events/stats + 1 console 400 trong log test là nhiễu kiểm thử: SSE bị
+  hủy khi chuyển trang, và 400 là lần nhập mã OTP sai có chủ ý (backend
+  log chỉ có 200 cho SSE + 400 cho 2 lần verify sai).
+- **Chưa xong:** BE 7 (migrate 118 news + 12 FAQ, chờ bản xuất dữ liệu);
+  BE 8 phía FastAPI (webhook → revalidate); CRM/email/Turnstile thật (chờ
+  quyết định #1, #4); trang /products, /resources, /events, /news, /about,
+  /careers (R1-3/R1-4) — link trong menu/footer hiện mờ tới lúc đó.
+
 ## 7. Thứ tự chạy toàn bộ (checklist)
 
 1. `cp .env.example .env` (sửa secret) rồi `docker compose up --build -d`
@@ -412,7 +614,7 @@ không có thẻ venue (đã bỏ theo quyết định của tran).
 |---|---|---|
 | Trang chủ hiện empty/error state | Backend chưa chạy, hoặc SQLite chưa có dữ liệu | Chạy FastAPI (mục 5), thêm dữ liệu vào SQLite. Đây là hành vi đúng, không phải lỗi. |
 | Nút đăng nhập Google bị mờ | `NEXT_PUBLIC_API_BASE_URL` chưa cấu hình, hoặc backend chưa cấu hình Google OAuth | Cấu hình `.env.local`, kiểm tra `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` trong `.env` của repo `BE_inventory`. |
-| Frontend gọi Strapi trả 403 | Bootstrap chưa cấp quyền Public | Xem log Strapi (`docker compose logs strapi`): phải có dòng `[bootstrap] Đã cấp quyền public`. Nếu không có, kiểm tra lỗi bootstrap trong log; kiểm tra lại trong admin: Settings → Users & Permissions → Roles → Public phải có `find`/`findOne` cho 4 content type. |
+| Frontend gọi Strapi trả 403 | Bootstrap chưa cấp quyền Public | Xem log Strapi (`docker compose logs strapi`): phải có dòng `[bootstrap] Đã cấp quyền public`. Nếu không có, kiểm tra lỗi bootstrap trong log; kiểm tra lại trong admin: Settings → Users & Permissions → Roles → Public phải có `find`/`findOne` cho các content type (13 loại từ R1-1). |
 | Frontend gọi Strapi trả 404 | Sai tên content type / chưa Publish bài / Single Type Home chưa có bản ghi | Kiểm tra slug trong Content-Type Builder; bài phải ở trạng thái Published. Riêng `/api/home` trả 404 khi chưa tạo bản Home nào là đúng (Strapi trả 404 cho Single Type rỗng). |
 | Publish trên Strapi mà Frontend không đổi | Webhook chưa tới FastAPI, hoặc Frontend chưa fetch lại | Kiểm tra webhook đã tạo chưa (log Strapi phải có `[bootstrap] Đã tạo webhook tới backend`) và URL webhook đúng chưa (mục 6.2); kiểm tra log FastAPI có nhận webhook không; thử reload trang để kiểm tra nội dung đã Publish chưa. |
 | `docker compose up` báo thiếu biến | Chưa copy `.env.example` sang `.env`, hoặc thiếu secret | `cp .env.example .env` rồi điền đủ các secret (Compose báo rõ tên biến thiếu). |

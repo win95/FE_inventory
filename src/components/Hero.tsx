@@ -3,9 +3,9 @@
 import CampaignPromptForm from "./CampaignPromptForm";
 import { useLocale } from "./LocaleProvider";
 
-// Hero (F02), theo đúng trang mẫu Figma: nền phẳng #F4F4F7, badge hồng nhạt
-// chữ đỏ, tiêu đề Barlow Condensed Black cỡ lớn in hoa (phần nhấn màu đỏ),
-// mô tả xám #6B6B80 với cụm chính in đậm đen.
+// Hero (F02), theo đúng trang mẫu Figma: nền phẳng #F5F6F8, badge hồng nhạt
+// chữ đỏ, tiêu đề Be Vietnam Pro Black cỡ lớn in hoa (phần nhấn màu đỏ),
+// mô tả xám #5B606B với cụm chính in đậm đen.
 // Copy theo đúng những gì quan sát được trên Figma, không bịa thêm số liệu:
 // hai con số trên trang mẫu (43 triệu người dùng ở Hero và 25.4M lượt kết
 // nối ở dải số liệu) đang lệch nhau nên Hero không nhắc lại con số nào —

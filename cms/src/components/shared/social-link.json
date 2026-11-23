@@ -1,0 +1,1 @@
+{"attributes":{"platform":{"enum":["facebook","linkedin","youtube","zalo","tiktok"],"type":"enumeration"},"url":{"type":"string"}},"collectionName":"components_shared_social_links","info":{"description":"Link mạng xã hội trong Global (footer).","displayName":"social-link"}}

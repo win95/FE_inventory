@@ -134,6 +134,50 @@ export interface LeadPayload {
   message: string;
 }
 
+// Lead form R1-2 (LEAD-01, Docs §6.2): trường bắt buộc + tùy chọn + ẩn.
+// Gửi qua POST /api/leads (mở rộng, BE 11); phone phải E.164 (+84...).
+export interface LeadSubmitPayload {
+  name: string;
+  email: string;
+  phone: string;
+  company: string;
+  industry?: string;
+  brand?: string;
+  regions?: string[];
+  notes?: string;
+  message?: string;
+  consentContact: boolean;
+  consentMarketing: boolean;
+  turnstileToken?: string | null;
+  utm?: Record<string, string>;
+  source?: string;
+  language?: string;
+  market?: string;
+}
+
+export interface LeadSubmitResponse {
+  leadId: number;
+  otpSent: boolean;
+}
+
+export interface OtpVerifyResponse {
+  verified: boolean;
+  leadToken: string;
+}
+
+export interface LeadProfilePayload {
+  industry?: string;
+  brand?: string;
+  regions?: string[];
+  notes?: string;
+  consentMarketing?: boolean;
+}
+
+export interface NewsletterPayload {
+  email: string;
+  locale?: string;
+}
+
 export interface ContactPayload {
   type: string;
   name: string;

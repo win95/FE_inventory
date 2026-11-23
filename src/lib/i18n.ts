@@ -1,8 +1,11 @@
 // Từ điển giao diện VI/EN + locale hiện tại.
 //
-// Ngôn ngữ mặc định là vi (khớp locale mặc định của Strapi). Nút EN trên
-// header đổi locale; locale được lưu localStorage nên lần sau mở lại vẫn
-// giữ. Đổi locale thì Frontend gọi lại API với locale mới — Strapi qua
+// Ngôn ngữ mặc định là vi (khớp locale mặc định của Strapi). Từ R1 locale
+// nằm trên URL (/vi, /en — Docs §4.2, §8.4): middleware chuyển đường dẫn
+// không tiền tố về /vi (hoặc locale trong cookie awing_locale), layout
+// [locale] kiểm tra locale rồi truyền xuống LocaleProvider; nút EN/VI trên
+// header chỉ đổi đoạn locale trên URL (kèm cookie để lần sau mở "/" vẫn
+// giữ). Đổi locale thì Frontend gọi lại API với locale mới — Strapi qua
 // ?locale=, FastAPI qua ?locale= (coverage) / body locale (suggest) — nên
 // cả chữ cứng lẫn nội dung dưới backend đều đổi theo, không chỉ đổi chữ
 // trên giao diện. Nhãn dữ liệu (loại venue, nhóm thư mục, ngành, mô tả
@@ -10,17 +13,22 @@
 // app/locale_names.py bên BE. Chỉ giữ nguyên tên riêng (tên chuỗi, tên
 // format, địa chỉ) và ghi chú kỹ thuật ở footer.
 //
-// Lưu ý: metadata trong layout.tsx vẫn cố định tiếng Việt (Next.js
-// metadata là tĩnh theo build, không theo locale của người dùng).
+// Lưu ý: metadata theo locale nằm ở [locale]/layout.tsx (generateMetadata);
+// metadata ở layout.tsx gốc chỉ là mặc định dự phòng.
 export type Locale = "vi" | "en";
 
 export const DEFAULT_LOCALE: Locale = "vi";
-export const LOCALE_STORAGE_KEY = "awing_locale";
+export const LOCALES: readonly Locale[] = ["vi", "en"];
+export const LOCALE_COOKIE_KEY = "awing_locale";
+
+/** Đường dẫn nội bộ có tiền tố locale: withLocale("/contact", "vi") → "/vi/contact". */
+export function withLocale(path: string, locale: Locale): string {
+  return `/${locale}${path === "/" ? "" : path}`;
+}
 
 const vi = {
   "nav.main": "Điều hướng chính",
   "nav.noDestination": "Chưa có trang đích — để sau",
-  "nav.partners": "Đối tác",
   "nav.trusted": "Tin dùng",
   "nav.switchLanguage": "Chuyển ngôn ngữ giao diện",
   "auth.signInGoogle": "Đăng nhập với Google",
@@ -77,7 +85,6 @@ const vi = {
   "form.sendLead": "Gửi thông tin",
   "footer.about":
     "Kênh marketing theo vị trí trên di động tại Việt Nam — kết nối thương hiệu tới người dùng qua Wi-Fi tại địa điểm.",
-  "footer.quickLinks": "Liên kết nhanh",
   "footer.home": "Trang chủ",
   "footer.contact": "Liên hệ",
   "contact.hq": "Trụ sở chính: ",
@@ -136,11 +143,6 @@ const vi = {
   "api.strapiUnreachable": "Không kết nối được tới Strapi CMS. Kiểm tra Strapi có đang chạy không.",
   "api.strapiError": "Strapi trả lỗi {status}.",
   // --- Nhóm bổ sung 18/11/2026 (dịch hết theo từng mode) ---
-  "nav.platform": "Nền tảng",
-  "nav.advertisers": "Nhà quảng cáo",
-  "nav.wifiPartners": "Đối tác Wi-Fi",
-  "nav.about": "Về chúng tôi",
-  "nav.media": "Truyền thông",
   "hero.eyebrow": "Marketing theo vị trí trên di động",
   "hero.suggest": "Nhận gợi ý",
   "stats.explore": "Khám phá mạng lưới địa điểm →",
@@ -196,6 +198,116 @@ const vi = {
   "modal.password": "Mật khẩu *",
   "modal.preview": "Xem trước",
   "common.backHome": "← Trang chủ",
+  "ui.prevPage": "Trang trước",
+  "ui.nextPage": "Trang sau",
+  "ui.breadcrumb": "Điều hướng phân cấp",
+  "ui.showToast": "Hiện thông báo",
+  "ui.toastMessage": "Đã lưu lựa chọn của bạn.",
+  "locked.title": "Nội dung bị khóa",
+  "locked.description": "Đăng nhập hoặc để lại thông tin để xem nội dung này.",
+  "locked.cta": "Tìm hiểu thêm",
+  "docs.title": "Thư viện component",
+  "docs.subtitle":
+    "Các khối dùng chung của R1 — nút, nhập liệu, thẻ nội dung, trạng thái khóa, block renderer và motion. Trang nội bộ, không có trong sitemap.",
+  "docs.base": "Component cơ bản",
+  "docs.content": "Component nội dung",
+  "docs.blocks": "Block renderer",
+  "docs.motion": "Motion",
+  "docs.sampleBlocks":
+    "Ví dụ danh sách block của một trang Product (dữ liệu mẫu tại chỗ, chưa từ Strapi).",
+  "docs.unknownBlock": "Block chưa hỗ trợ: {type}",
+  "prod.viewDetails": "Xem chi tiết",
+  // Nhóm bổ sung 23/11/2026 (R1-2: header/footer + lead form).
+  "nav.products": "Sản phẩm",
+  "nav.data": "Dữ liệu",
+  "nav.insights": "Insights & Tài nguyên",
+  "nav.company": "Công ty",
+  "nav.search": "Tìm kiếm",
+  "nav.getData": "Get data",
+  "nav.signIn": "Sign in",
+  "nav.signInCustomer": "Khách hàng AWING — Đăng nhập ACM/AAP",
+  "nav.signInWebsite": "Tài khoản website — Lưu bộ lọc, lịch sử và tài liệu đã xem",
+  "nav.signInSoon": "Chưa dùng được — SSO ACM/AAP ở R4",
+  "nav.menu": "Menu",
+  "nav.talkToUs": "Talk to us",
+  "nav.dataOverview": "Tổng quan",
+  "nav.dataExplorer": "Explorer",
+  "nav.dataHeatmap": "Bản đồ nhiệt",
+  "nav.dataMethodology": "Phương pháp",
+  "nav.resReports": "Báo cáo",
+  "nav.resPapers": "Bài nghiên cứu",
+  "nav.resCaseStudies": "Case study",
+  "nav.resEvents": "Sự kiện",
+  "nav.resNews": "Tin tức",
+  "nav.compAbout": "Về chúng tôi",
+  "nav.compPartners": "Đối tác",
+  "nav.compCustomers": "Khách hàng",
+  "nav.compInvestors": "Nhà đầu tư",
+  "nav.compCareers": "Tuyển dụng",
+  "nav.compContact": "Liên hệ",
+  "search.title": "Tìm kiếm",
+  "search.placeholder": "Tìm sản phẩm, dữ liệu, tài nguyên…",
+  "search.presets": "Gợi ý:",
+  "search.noResults": "Không tìm thấy kết quả cho “{q}”.",
+  "search.hint": "Tìm trong 6 sản phẩm, 26 giải pháp và các trang.",
+  "search.closeLabel": "Đóng tìm kiếm",
+  "lead.dialogTitle": "Nhận dữ liệu từ AWING",
+  "lead.company": "Công ty *",
+  "lead.industry": "Ngành",
+  "lead.industryPlaceholder": "Chọn ngành",
+  "lead.brand": "Tên thương hiệu",
+  "lead.regions": "Khu vực quan tâm",
+  "lead.notes": "Ghi chú",
+  "lead.notesPlaceholder": "Mô tả ngắn nhu cầu của bạn…",
+  "lead.consentContact": "Đồng ý để AWING liên hệ về yêu cầu này.",
+  "lead.consentMarketing": "Nhận tin tức và tài nguyên từ AWING.",
+  "lead.consentRequired": "Cần đồng ý để chúng tôi liên hệ lại.",
+  "lead.personalEmail":
+    "Email này trông như email cá nhân — nên dùng email công ty để xác thực nhanh hơn.",
+  "lead.phoneInvalid": "Số điện thoại chưa đúng định dạng quốc tế (vd. +84 901 234 567).",
+  "lead.emailInvalid": "Email chưa đúng định dạng.",
+  "lead.submitAndVerify": "Gửi mã xác thực",
+  "lead.otpTitle": "Xác thực email",
+  "lead.otpHint": "Đã gửi mã 6 số tới {email}. Mã có hiệu lực 10 phút.",
+  "lead.otpLabel": "Mã xác thực",
+  "lead.otpWrong": "Mã chưa đúng — còn {n} lần thử.",
+  "lead.otpExpired": "Mã đã hết hạn. Gửi lại mã mới.",
+  "lead.otpResend": "Gửi lại mã",
+  "lead.otpResendWait": "Gửi lại sau {n}s",
+  "lead.otpVerify": "Xác thực",
+  "lead.otpSending": "Đang gửi mã…",
+  "lead.verifiedTitle": "Email đã xác thực.",
+  "lead.verifiedBody":
+    "Thông tin của bạn đã được ghi nhận. Bạn có thể bổ sung thêm để chúng tôi tư vấn sát hơn.",
+  "lead.completeTitle": "Bổ sung hồ sơ",
+  "lead.completeBody": "Các trường này không bắt buộc — điền thêm để nhận tư vấn sát với nhu cầu.",
+  "lead.saveProfile": "Lưu hồ sơ",
+  "lead.skipProfile": "Để sau",
+  "lead.profileSaved": "Đã lưu hồ sơ. Cảm ơn bạn!",
+  "lead.turnstileSimulated": "Được bảo vệ bởi Cloudflare Turnstile (mô phỏng)",
+  "form.company": "Công ty *",
+  "form.brand": "Tên thương hiệu",
+  "form.industry": "Ngành",
+  "form.regions": "Khu vực quan tâm",
+  "form.notes": "Ghi chú",
+  "footer.products": "Sản phẩm",
+  "footer.dataResources": "Dữ liệu & Tài nguyên",
+  "footer.company": "Công ty",
+  "footer.support": "Hỗ trợ",
+  "footer.newsletter": "Nhận tin từ AWING",
+  "footer.newsletterPlaceholder": "Email công việc của bạn",
+  "footer.newsletterButton": "Đăng ký",
+  "footer.newsletterDone": "Đã đăng ký nhận tin. Cảm ơn bạn!",
+  "footer.newsletterError": "Email chưa đúng định dạng.",
+  "footer.cookieSettings": "Cài đặt cookie",
+  "footer.cookieTitle": "Cookie & theo dõi",
+  "footer.cookieBody":
+    "Site hiện chưa chạy tracking (chưa có mã GTM) và chưa đặt cookie theo dõi nào. Khi GTM được bật, bạn có thể tắt tracking tại đây.",
+  "footer.market": "Thị trường",
+  "footer.faq": "Câu hỏi thường gặp",
+  "footer.privacy": "Chính sách bảo mật",
+  "footer.terms": "Điều khoản sử dụng",
+  "footer.socialSoon": "Chưa có link — chờ chốt SOC-01",
 } as const;
 
 export type DictKey = keyof typeof vi;
@@ -205,7 +317,6 @@ export type DictKey = keyof typeof vi;
 const en: Record<DictKey, string> = {
   "nav.main": "Main navigation",
   "nav.noDestination": "No destination yet — coming later",
-  "nav.partners": "Partners",
   "nav.trusted": "Contact us",
   "nav.switchLanguage": "Switch interface language",
   "auth.signInGoogle": "Sign in with Google",
@@ -262,7 +373,6 @@ const en: Record<DictKey, string> = {
   "form.sendLead": "Send details",
   "footer.about":
     "Mobile location-based marketing in Vietnam — connecting brands to users via Wi-Fi at the venue.",
-  "footer.quickLinks": "Quick links",
   "footer.home": "Home",
   "footer.contact": "Contact",
   "contact.hq": "Head office: ",
@@ -321,11 +431,6 @@ const en: Record<DictKey, string> = {
   "api.strapiUnreachable": "Couldn't reach Strapi CMS. Check that it's running.",
   "api.strapiError": "Strapi returned error {status}.",
   // --- Added 18/11/2026 (translate everything per locale) ---
-  "nav.platform": "Platform",
-  "nav.advertisers": "Advertisers",
-  "nav.wifiPartners": "Wi-Fi Partners",
-  "nav.about": "About Us",
-  "nav.media": "Media",
   "hero.eyebrow": "Mobile Location-Based Marketing",
   "hero.suggest": "Get Suggestions",
   "stats.explore": "Explore Location Network →",
@@ -381,6 +486,116 @@ const en: Record<DictKey, string> = {
   "modal.password": "Password *",
   "modal.preview": "Preview",
   "common.backHome": "← Home",
+  "ui.prevPage": "Previous page",
+  "ui.nextPage": "Next page",
+  "ui.breadcrumb": "Breadcrumb",
+  "ui.showToast": "Show toast",
+  "ui.toastMessage": "Your selection has been saved.",
+  "locked.title": "Locked content",
+  "locked.description": "Sign in or leave your details to view this content.",
+  "locked.cta": "Learn more",
+  "docs.title": "Component library",
+  "docs.subtitle":
+    "Shared R1 building blocks — buttons, inputs, content cards, locked state, block renderer and motion. Internal page, not in the sitemap.",
+  "docs.base": "Base components",
+  "docs.content": "Content components",
+  "docs.blocks": "Block renderer",
+  "docs.motion": "Motion",
+  "docs.sampleBlocks":
+    "Example block list of a Product page (sample data inline, not from Strapi yet).",
+  "docs.unknownBlock": "Unsupported block: {type}",
+  "prod.viewDetails": "View details",
+  // Added 23/11/2026 (R1-2: header/footer + lead form).
+  "nav.products": "Products",
+  "nav.data": "Data",
+  "nav.insights": "Insights & Resources",
+  "nav.company": "Company",
+  "nav.search": "Search",
+  "nav.getData": "Get data",
+  "nav.signIn": "Sign in",
+  "nav.signInCustomer": "AWING customer — Continue to ACM/AAP sign-in",
+  "nav.signInWebsite": "Website account — Save filters, history and viewed documents",
+  "nav.signInSoon": "Not available yet — ACM/AAP SSO lands in R4",
+  "nav.menu": "Menu",
+  "nav.talkToUs": "Talk to us",
+  "nav.dataOverview": "Overview",
+  "nav.dataExplorer": "Explorer",
+  "nav.dataHeatmap": "Heatmap",
+  "nav.dataMethodology": "Methodology",
+  "nav.resReports": "Reports",
+  "nav.resPapers": "Papers",
+  "nav.resCaseStudies": "Case studies",
+  "nav.resEvents": "Events",
+  "nav.resNews": "News",
+  "nav.compAbout": "About",
+  "nav.compPartners": "Partners",
+  "nav.compCustomers": "Customers",
+  "nav.compInvestors": "Investors",
+  "nav.compCareers": "Careers",
+  "nav.compContact": "Contact",
+  "search.title": "Search",
+  "search.placeholder": "Search products, data, resources…",
+  "search.presets": "Try:",
+  "search.noResults": "No results for “{q}”.",
+  "search.hint": "Search across 6 products, 26 solutions and pages.",
+  "search.closeLabel": "Close search",
+  "lead.dialogTitle": "Get data from AWING",
+  "lead.company": "Company *",
+  "lead.industry": "Industry",
+  "lead.industryPlaceholder": "Select industry",
+  "lead.brand": "Brand name",
+  "lead.regions": "Regions of interest",
+  "lead.notes": "Notes",
+  "lead.notesPlaceholder": "Briefly describe what you need…",
+  "lead.consentContact": "I agree to be contacted about this request.",
+  "lead.consentMarketing": "Send me AWING news and resources.",
+  "lead.consentRequired": "Please agree so we can contact you.",
+  "lead.personalEmail":
+    "This looks like a personal email — a work email verifies faster.",
+  "lead.phoneInvalid": "Phone number should be in international format (e.g. +84 901 234 567).",
+  "lead.emailInvalid": "Enter a valid email address.",
+  "lead.submitAndVerify": "Send verification code",
+  "lead.otpTitle": "Verify your email",
+  "lead.otpHint": "We sent a 6-digit code to {email}. It expires in 10 minutes.",
+  "lead.otpLabel": "Verification code",
+  "lead.otpWrong": "Wrong code — {n} attempts left.",
+  "lead.otpExpired": "Code expired. Request a new one.",
+  "lead.otpResend": "Resend code",
+  "lead.otpResendWait": "Resend in {n}s",
+  "lead.otpVerify": "Verify",
+  "lead.otpSending": "Sending code…",
+  "lead.verifiedTitle": "Email verified.",
+  "lead.verifiedBody":
+    "Your details are saved. Add a bit more so we can advise you better.",
+  "lead.completeTitle": "Complete your profile",
+  "lead.completeBody": "Optional — fill in more to get advice tailored to your needs.",
+  "lead.saveProfile": "Save profile",
+  "lead.skipProfile": "Skip for now",
+  "lead.profileSaved": "Profile saved. Thank you!",
+  "lead.turnstileSimulated": "Protected by Cloudflare Turnstile (simulated)",
+  "form.company": "Company *",
+  "form.brand": "Brand name",
+  "form.industry": "Industry",
+  "form.regions": "Regions of interest",
+  "form.notes": "Notes",
+  "footer.products": "Products",
+  "footer.dataResources": "Data & Resources",
+  "footer.company": "Company",
+  "footer.support": "Support",
+  "footer.newsletter": "Get AWING updates",
+  "footer.newsletterPlaceholder": "Your work email",
+  "footer.newsletterButton": "Join",
+  "footer.newsletterDone": "You're subscribed. Thank you!",
+  "footer.newsletterError": "Enter a valid email address.",
+  "footer.cookieSettings": "Cookie settings",
+  "footer.cookieTitle": "Cookies & tracking",
+  "footer.cookieBody":
+    "This site currently runs no tracking (no GTM ID yet) and sets no tracking cookies. Once GTM is enabled, you can turn tracking off here.",
+  "footer.market": "Market",
+  "footer.faq": "FAQ",
+  "footer.privacy": "Privacy policy",
+  "footer.terms": "Terms of use",
+  "footer.socialSoon": "No link yet — pending SOC-01",
 };
 
 const dict: Record<Locale, Record<DictKey, string>> = { vi, en };

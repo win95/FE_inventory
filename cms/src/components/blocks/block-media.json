@@ -1,0 +1,1 @@
+{"attributes":{"caption":{"pluginOptions":{"i18n":{"localized":true}},"type":"string"},"file":{"allowedTypes":["images"],"multiple":false,"required":false,"type":"media"}},"collectionName":"components_blocks_block_media","info":{"description":"Block Media — ảnh + chú thích.","displayName":"block-media"}}
