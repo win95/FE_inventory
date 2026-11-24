@@ -27,7 +27,7 @@ export default function Pagination({ page, totalPages, onChange }: PaginationPro
   const btn =
     "rounded-lg border border-border bg-white px-3 py-1.5 text-xs text-ink transition-colors hover:border-brand hover:text-brand disabled:cursor-not-allowed disabled:opacity-40";
   return (
-    <nav aria-label="Pagination" className="flex items-center gap-1.5">
+    <nav aria-label="Pagination" className="flex flex-wrap items-center justify-center gap-1.5">
       <button type="button" className={btn} disabled={page <= 1} onClick={() => onChange(page - 1)}>
         {t("ui.prevPage")}
       </button>

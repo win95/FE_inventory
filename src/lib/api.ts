@@ -176,6 +176,103 @@ export async function subscribeNewsletter(
   );
 }
 
+// Đăng ký sự kiện (FE 36, BE 15): 201 { registrationId, registered,
+// duplicate } — đăng ký trùng email trong 24h trả duplicate=true, không lỗi.
+export async function registerEvent(
+  slug: string,
+  payload: { name: string; email: string; phone?: string; consent: boolean; locale: string },
+  locale: Locale = "vi",
+): Promise<{ registrationId: number; registered: boolean; duplicate: boolean }> {
+  return requestJson<{ registrationId: number; registered: boolean; duplicate: boolean }>(
+    `/api/events/${encodeURIComponent(slug)}/register`,
+    { method: "POST", body: JSON.stringify(payload) },
+    locale,
+  );
+}
+
+// Nộp CV (FE 43, BE 16): multipart (file PDF/DOCX ≤ 5 MB) — không dùng
+// requestJson vì nó ép Content-Type JSON; lỗi BE trả theo format chung
+// {"error": {"code", "message"}} nên parse thủ công ở đây.
+export async function applyJob(
+  slug: string,
+  formData: FormData,
+  locale: Locale = "vi",
+): Promise<{ applicationId: number; received: boolean }> {
+  if (!isBackendConfigured()) {
+    throw new ApiError(translate(locale, "api.noBackendConfig"), 0);
+  }
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/api/jobs/${encodeURIComponent(slug)}/apply`, {
+      method: "POST",
+      body: formData,
+    });
+  } catch {
+    throw new ApiError(translate(locale, "api.backendUnreachable"), 0);
+  }
+  if (!res.ok) {
+    let code: string | undefined;
+    let message: string | undefined;
+    try {
+      const body = (await res.json()) as { error?: { code?: string; message?: string } };
+      code = body.error?.code;
+      message = body.error?.message;
+    } catch {
+      // Body không phải JSON — giữ message mặc định theo status.
+    }
+    throw new ApiError(message ?? translate(locale, "api.backendUnreachable"), res.status, code);
+  }
+  return (await res.json()) as { applicationId: number; received: boolean };
+}
+
+// Xác nhận newsletter (FE 41, BE 17): token dùng 1 lần, hết hạn sau 7 ngày.
+export async function confirmNewsletter(
+  token: string,
+  locale: Locale = "vi",
+): Promise<{ subscribed: boolean; confirmed: boolean }> {
+  return requestJson<{ subscribed: boolean; confirmed: boolean }>(
+    `/api/newsletter/confirm?token=${encodeURIComponent(token)}`,
+    { method: "GET" },
+    locale,
+  );
+}
+
+// Tìm kiếm nội dung (FE 45-47, BE 18-20): GET /api/search của FastAPI —
+// đọc Strapi live (cache 5 phút), khớp không dấu, trả facet đếm theo loại.
+// BE trả url không tiền tố locale (/products/...) — trang gọi tự gắn locale.
+export interface SearchResultItem {
+  type: string;
+  slug: string;
+  title: string;
+  summary: string;
+  url: string;
+  locale: string;
+  market: string;
+  date: string | null;
+}
+
+export interface SearchResponse {
+  results: SearchResultItem[];
+  facets: Record<string, number>;
+  total: number;
+  page: number;
+  pageSize: number;
+  source: string;
+}
+
+export async function searchContent(
+  q: string,
+  opts: { locale?: string; type?: string; page?: number; pageSize?: number } = {},
+  locale: Locale = "vi",
+): Promise<SearchResponse> {
+  const params = new URLSearchParams({ q });
+  if (opts.locale) params.set("locale", opts.locale);
+  if (opts.type) params.set("type", opts.type);
+  if (opts.page) params.set("page", String(opts.page));
+  if (opts.pageSize) params.set("pageSize", String(opts.pageSize));
+  return requestJson<SearchResponse>(`/api/search?${params.toString()}`, { method: "GET" }, locale);
+}
+
 export async function submitContact(payload: ContactPayload, locale: Locale = "vi"): Promise<void> {
   await requestJson(
     "/api/contact",

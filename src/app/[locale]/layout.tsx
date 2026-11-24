@@ -10,6 +10,7 @@ import {
   pageMetadata,
   websiteJsonLd,
 } from "@/lib/seo";
+import { fetchGlobal } from "@/lib/strapi";
 
 // Layout cho mọi trang theo locale (/vi, /en — Docs §4.2, FE 4).
 // Locale không hợp lệ → 404 (middleware đã chuyển đường dẫn không tiền tố
@@ -46,6 +47,9 @@ export default async function LocaleLayout({
 }: LayoutProps<"/[locale]">) {
   const { locale } = await params;
   if (locale !== "vi" && locale !== "en") notFound();
+  // Link mạng xã hội (FE 48) lấy từ single Global — Strapi lỗi thì footer
+  // giữ nút mờ, layout không crash.
+  const global = await fetchGlobal(locale as Locale).catch(() => null);
   return (
     <LocaleProvider locale={locale as Locale}>
       <script
@@ -55,7 +59,7 @@ export default async function LocaleLayout({
         }}
       />
       <SiteChrome>{children}</SiteChrome>
-      <Footer />
+      <Footer socials={global?.socialLinks ?? []} />
       <ToastViewport />
     </LocaleProvider>
   );

@@ -26,8 +26,10 @@ export default function Tabs({ items, value, onChange, ariaLabel }: TabsProps) {
     refs.current[next]?.focus();
   };
 
+  // FE 52: cuộn ngang trên mobile — 6 tab sản phẩm không vừa 360px, không
+  // được để tràn trang. Người dùng vuốt ngang để xem tab còn lại.
   return (
-    <div role="tablist" aria-label={ariaLabel} className="flex gap-1.5">
+    <div role="tablist" aria-label={ariaLabel} className="flex gap-1.5 overflow-x-auto pb-1">
       {items.map((item, i) => {
         const active = item.id === value;
         return (
@@ -40,7 +42,7 @@ export default function Tabs({ items, value, onChange, ariaLabel }: TabsProps) {
             aria-selected={active}
             onClick={() => onChange(item.id)}
             onKeyDown={(e) => onKeyDown(e, i)}
-            className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
+            className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs transition-colors ${
               active ? "bg-brand font-semibold text-white" : "bg-surface text-muted hover:text-ink"
             }`}
           >

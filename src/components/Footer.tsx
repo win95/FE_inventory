@@ -3,8 +3,9 @@
 // tin, thị trường). Link tới trang chưa có (R1-3/R1-4) hiện mờ + không bấm
 // được, giữ quy ước "không nút chết"; chỉ /locations, /advertisers và
 // /contact là link thật. Form nhận tin gửi POST /api/newsletter (lưu email,
-// double opt-in ở BE 17 / R1-4). Link mạng xã hội chưa có URL thật (SOC-01
-// chưa chốt) nên hiện mờ. Ẩn trên /advertisers như trang mẫu Figma.
+// double opt-in ở BE 17 / R1-4). Link mạng xã hội (FE 48, SOC.01) lấy từ
+// single Global trong Strapi — có URL trong CMS thì là link thật, chưa có
+// thì hiện mờ. Ẩn trên /advertisers như trang mẫu Figma.
 "use client";
 
 import { useState } from "react";
@@ -17,10 +18,19 @@ import { PRODUCTS } from "@/lib/products";
 import { subscribeNewsletter } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { Modal } from "./ui";
+import type { CmsSocialLink } from "@/lib/types";
+
+const SOCIAL_LABELS: Record<string, string> = {
+  facebook: "Facebook",
+  linkedin: "LinkedIn",
+  youtube: "YouTube",
+  zalo: "Zalo OA",
+  tiktok: "TikTok",
+};
 
 const SOCIALS = ["Facebook", "LinkedIn", "YouTube", "Zalo OA", "TikTok"];
 
-export default function Footer() {
+export default function Footer({ socials = [] }: { socials?: CmsSocialLink[] }) {
   const { locale, setLocale, t } = useLocale();
   const pathname = usePathname();
   const [email, setEmail] = useState("");
@@ -69,15 +79,27 @@ export default function Footer() {
           </p>
           <p className="mt-2 text-sm leading-6 text-muted">{t("footer.about")}</p>
           <div className="mt-4 flex flex-wrap gap-2">
-            {SOCIALS.map((name) => (
-              <span
-                key={name}
-                title={t("footer.socialSoon")}
-                className="cursor-not-allowed rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted/50"
-              >
-                {name}
-              </span>
-            ))}
+            {socials.length > 0
+              ? socials.map((s) => (
+                  <a
+                    key={s.platform}
+                    href={s.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted hover:border-brand hover:text-brand"
+                  >
+                    {SOCIAL_LABELS[s.platform] ?? s.platform}
+                  </a>
+                ))
+              : SOCIALS.map((name) => (
+                  <span
+                    key={name}
+                    title={t("footer.socialSoon")}
+                    className="cursor-not-allowed rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted/50"
+                  >
+                    {name}
+                  </span>
+                ))}
           </div>
         </div>
 
@@ -85,7 +107,7 @@ export default function Footer() {
           <p className="text-sm font-semibold text-ink">{t("footer.products")}</p>
           <ul className="mt-3 space-y-2 text-sm text-muted">
             {PRODUCTS.map((product) => (
-              <li key={product.slug}>{link(product.name, null)}</li>
+              <li key={product.slug}>{link(product.name, withLocale(`/products/${product.slug}`, locale))}</li>
             ))}
           </ul>
         </nav>
@@ -97,11 +119,11 @@ export default function Footer() {
             <li>{link(t("nav.dataExplorer"), null)}</li>
             <li>{link(t("nav.dataHeatmap"), withLocale("/locations", locale))}</li>
             <li>{link(t("nav.dataMethodology"), null)}</li>
-            <li>{link(t("nav.resReports"), null)}</li>
-            <li>{link(t("nav.resPapers"), null)}</li>
-            <li>{link(t("nav.resCaseStudies"), withLocale("/advertisers", locale))}</li>
-            <li>{link(t("nav.resEvents"), null)}</li>
-            <li>{link(t("nav.resNews"), null)}</li>
+            <li>{link(t("nav.resReports"), withLocale("/resources?type=report", locale))}</li>
+            <li>{link(t("nav.resPapers"), withLocale("/resources?type=paper", locale))}</li>
+            <li>{link(t("nav.resCaseStudies"), withLocale("/resources?type=case-study", locale))}</li>
+            <li>{link(t("nav.resEvents"), withLocale("/events", locale))}</li>
+            <li>{link(t("nav.resNews"), withLocale("/news", locale))}</li>
           </ul>
         </nav>
 
@@ -109,20 +131,21 @@ export default function Footer() {
           <nav aria-label={t("footer.company")}>
             <p className="text-sm font-semibold text-ink">{t("footer.company")}</p>
             <ul className="mt-3 space-y-2 text-sm text-muted">
-              <li>{link(t("nav.compAbout"), null)}</li>
-              <li>{link(t("nav.compPartners"), null)}</li>
-              <li>{link(t("nav.compCustomers"), null)}</li>
-              <li>{link(t("nav.compInvestors"), null)}</li>
-              <li>{link(t("nav.compCareers"), null)}</li>
+              <li>{link(t("nav.compAbout"), withLocale("/about", locale))}</li>
+              <li>{link(t("nav.compPartners"), withLocale("/partners", locale))}</li>
+              <li>{link(t("nav.compCustomers"), withLocale("/customers", locale))}</li>
+              <li>{link(t("nav.compInvestors"), withLocale("/investors", locale))}</li>
+              <li>{link(t("nav.compCareers"), withLocale("/careers", locale))}</li>
               <li>{link(t("nav.compContact"), withLocale("/contact", locale))}</li>
             </ul>
           </nav>
           <nav aria-label={t("footer.support")} className="mt-6">
             <p className="text-sm font-semibold text-ink">{t("footer.support")}</p>
             <ul className="mt-3 space-y-2 text-sm text-muted">
-              <li>{link(t("footer.faq"), null)}</li>
-              <li>{link(t("footer.privacy"), null)}</li>
-              <li>{link(t("footer.terms"), null)}</li>
+              <li>{link(t("footer.faq"), withLocale("/faq", locale))}</li>
+              <li>{link(t("footer.privacy"), withLocale("/privacy", locale))}</li>
+              <li>{link(t("footer.terms"), withLocale("/terms", locale))}</li>
+              <li>{link(t("footer.cookies"), withLocale("/cookies", locale))}</li>
               <li>
                 <button
                   type="button"

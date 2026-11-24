@@ -1,111 +1,111 @@
-"use client";
-
-import { useState } from "react";
-import { ApiError, submitContact } from "@/lib/api";
-import { trackEvent } from "@/lib/tracking";
+// Trang Contact Us (F15 + CONT.01, R1-5): form liên hệ (theo mẫu chính
+// thức của AWING, kiểm tra trực tiếp ngày 18/11/2026) + thông tin văn phòng
+// + bản đồ trụ sở Hà Nội (Google Maps embed, không cần API key) + link
+// mạng xã hội từ single Global (FE 48) + form lead nhúng (LeadForm,
+// source="contact"). Trang thành server component để đọc Global từ Strapi.
+import { connection } from "next/server";
+import ContactForm from "@/components/ContactForm";
 import ContactInfo from "@/components/ContactInfo";
-import { useLocale } from "@/components/LocaleProvider";
+import LeadForm from "@/components/LeadForm";
+import { translate, type Locale } from "@/lib/i18n";
+import { pageMetadata } from "@/lib/seo";
+import { fetchGlobal } from "@/lib/strapi";
 
-// Trang Contact Us (F15), theo trang chính thức https://awing.vn/vi/contact-us
-// (kiểm tra trực tiếp ngày 18/11/2026): form Loại yêu cầu / Họ tên / Email /
-// SĐT / Tin nhắn + thông tin liên hệ. Gửi qua API backend, ghi vào SQLite.
-// Gửi lỗi thì báo tại chỗ, không mất nội dung đã nhập.
-export default function ContactPage() {
-  const { locale, t } = useLocale();
-  // Loại yêu cầu: giá trị gửi về backend giữ nguyên tiếng Việt (đúng mẫu
-  // form chính thức của AWING), chỉ nhãn hiển thị dịch theo locale.
-  const requestTypes = [
-    { value: "Liên hệ quảng cáo", label: t("contactPage.typeAds") },
-    { value: "Hợp tác phát triển mạng lưới", label: t("contactPage.typeNetwork") },
-    { value: "Hỗ trợ người dùng & kết nối Wi-Fi", label: t("contactPage.typeSupport") },
-    { value: "Khác", label: t("contactPage.typeOther") },
-  ];
-  const [type, setType] = useState(requestTypes[0].value);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [message, setMessage] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const [error, setError] = useState("");
+export const instant = false;
 
-  const valid = name.trim() && email.trim() && phone.trim() && message.trim();
+// Tòa VCCI, 9 Đào Duy Anh, Hà Nội — địa chỉ trụ sở đã xác minh (ContactInfo).
+const HQ_MAP_QUERY = "Tòa VCCI, 9 Đào Duy Anh, Hà Nội";
+const HQ_MAP_URL = `https://www.google.com/maps?q=${encodeURIComponent(HQ_MAP_QUERY)}&output=embed`;
 
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!valid) return;
-    setStatus("sending");
-    setError("");
-    try {
-      await submitContact({ type, name: name.trim(), email: email.trim(), phone: phone.trim(), message: message.trim() }, locale);
-      setStatus("sent");
-      trackEvent("contact_form_submit");
-    } catch (err: unknown) {
-      setStatus("error");
-      setError(err instanceof ApiError ? err.message : t("common.sendFailed"));
-    }
-  };
+const SOCIAL_LABELS: Record<string, string> = {
+  facebook: "Facebook",
+  linkedin: "LinkedIn",
+  youtube: "YouTube",
+  zalo: "Zalo OA",
+  tiktok: "TikTok",
+};
+
+export async function generateMetadata({ params }: PageProps<"/[locale]/contact">) {
+  const { locale } = await params;
+  const loc = (locale === "en" ? "en" : "vi") as Locale;
+  return pageMetadata({
+    locale: loc,
+    path: "/contact",
+    title: translate(loc, "contactPage.title"),
+    description: translate(loc, "contactPage.subtitle"),
+  });
+}
+
+export default async function ContactPage({ params }: PageProps<"/[locale]/contact">) {
+  await connection();
+  const { locale } = await params;
+  const loc = (locale === "en" ? "en" : "vi") as Locale;
+  const global = await fetchGlobal(loc).catch(() => null);
+  const socials = global?.socialLinks ?? [];
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-        {t("contactPage.title")}
+        {translate(loc, "contactPage.title")}
       </h1>
-      <p className="mt-2 max-w-2xl text-muted">{t("contactPage.subtitle")}</p>
+      <p className="mt-2 max-w-2xl text-muted">{translate(loc, "contactPage.subtitle")}</p>
 
       <div className="mt-8 grid gap-10 lg:grid-cols-2">
-        {status === "sent" ? (
-          <div className="h-fit rounded-2xl border border-green-200 bg-green-50 p-6">
-            <p className="font-semibold text-green-700">{t("contactPage.sentTitle")}</p>
-            <p className="mt-1 text-sm text-green-600">{t("contactPage.sentBody")}</p>
-          </div>
-        ) : (
-          <form onSubmit={submit} className="grid gap-4">
-            <div>
-              <label htmlFor="contact-type" className="text-sm font-medium text-ink">{t("contactPage.typeLabel")}</label>
-              <select id="contact-type" value={type} onChange={(e) => setType(e.target.value)}
-                className="mt-1 h-11 w-full rounded-lg border border-outline bg-white px-3 text-ink outline-none focus:border-brand">
-                {requestTypes.map((item) => (
-                  <option key={item.value} value={item.value}>{item.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="contact-name" className="text-sm font-medium text-ink">{t("form.name")}</label>
-              <input id="contact-name" type="text" value={name} onChange={(e) => setName(e.target.value)} required
-                className="mt-1 h-11 w-full rounded-lg border border-outline bg-white px-3 text-ink outline-none focus:border-brand" />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="contact-email" className="text-sm font-medium text-ink">Email *</label>
-                <input id="contact-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-                  className="mt-1 h-11 w-full rounded-lg border border-outline bg-white px-3 text-ink outline-none focus:border-brand" />
-              </div>
-              <div>
-                <label htmlFor="contact-phone" className="text-sm font-medium text-ink">{t("form.phone")}</label>
-                <input id="contact-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required
-                  className="mt-1 h-11 w-full rounded-lg border border-outline bg-white px-3 text-ink outline-none focus:border-brand" />
-              </div>
-            </div>
-            <div>
-              <label htmlFor="contact-message" className="text-sm font-medium text-ink">{t("form.message")}</label>
-              <textarea id="contact-message" value={message} onChange={(e) => setMessage(e.target.value)} required rows={5}
-                className="mt-1 w-full rounded-lg border border-outline bg-white px-3 py-2 text-ink outline-none focus:border-brand" />
-            </div>
-            {status === "error" && <p role="alert" className="text-sm text-brand">{error}</p>}
-            <button type="submit" disabled={!valid || status === "sending"}
-              className="h-12 w-fit rounded-lg bg-brand px-6 font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-muted/40">
-              {status === "sending" ? t("common.sending") : t("form.send")}
-            </button>
-          </form>
-        )}
+        <ContactForm />
 
-        <aside aria-label={t("contactPage.asideTitle")}>
-          <h2 className="text-lg font-semibold text-ink">{t("contactPage.asideTitle")}</h2>
+        <aside aria-label={translate(loc, "contactPage.asideTitle")}>
+          <h2 className="text-lg font-semibold text-ink">{translate(loc, "contactPage.asideTitle")}</h2>
           <div className="mt-4">
             <ContactInfo />
           </div>
+
+          <h3 className="mt-8 text-base font-semibold text-ink">{translate(loc, "contactPage.mapTitle")}</h3>
+          <iframe
+            title={translate(loc, "contactPage.mapTitle")}
+            src={HQ_MAP_URL}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            className="mt-3 h-64 w-full rounded-2xl border border-border"
+          />
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(HQ_MAP_QUERY)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-block text-sm text-brand hover:underline"
+          >
+            {translate(loc, "contactPage.openMap")}
+          </a>
+
+          {socials.length > 0 && (
+            <>
+              <h3 className="mt-8 text-base font-semibold text-ink">{translate(loc, "contactPage.socialTitle")}</h3>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {socials.map((s) => (
+                  <a
+                    key={s.platform}
+                    href={s.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-lg border border-border px-3 py-1.5 text-sm text-muted hover:border-brand hover:text-brand"
+                  >
+                    {SOCIAL_LABELS[s.platform] ?? s.platform}
+                  </a>
+                ))}
+              </div>
+            </>
+          )}
         </aside>
       </div>
+
+      <section aria-labelledby="contact-lead-title" className="mt-14 rounded-2xl border border-border bg-surface p-6 sm:p-8">
+        <h2 id="contact-lead-title" className="text-xl font-bold text-ink">
+          {translate(loc, "contactPage.leadTitle")}
+        </h2>
+        <p className="mt-1 text-sm text-muted">{translate(loc, "contactPage.leadBody")}</p>
+        <div className="mt-6 max-w-2xl">
+          <LeadForm mode="embedded" source="contact" />
+        </div>
+      </section>
     </main>
   );
 }

@@ -23,13 +23,18 @@ const STEP_ICONS: React.ReactNode[] = [
   </svg>,
 ];
 
-export default function HowItWorks() {
+export default function HowItWorks({ steps }: { steps?: { title: string; description: string }[] }) {
   const { t } = useLocale();
-  const steps = [
-    { number: "01", title: t("how.title1"), description: t("how.desc1"), icon: STEP_ICONS[0] },
-    { number: "02", title: t("how.title2"), description: t("how.desc2"), icon: STEP_ICONS[1] },
-    { number: "03", title: t("how.title3"), description: t("how.desc3"), icon: STEP_ICONS[2] },
-  ];
+  // R1-3: bước lấy từ Home single của Strapi khi có; không có thì giữ
+  // copy tĩnh cũ (i18n) để trang không trống.
+  const items = (steps && steps.length > 0
+    ? steps.map((s, i) => ({ number: String(i + 1).padStart(2, "0"), title: s.title, description: s.description, icon: STEP_ICONS[i % STEP_ICONS.length] }))
+    : [
+        { number: "01", title: t("how.title1"), description: t("how.desc1"), icon: STEP_ICONS[0] },
+        { number: "02", title: t("how.title2"), description: t("how.desc2"), icon: STEP_ICONS[1] },
+        { number: "03", title: t("how.title3"), description: t("how.desc3"), icon: STEP_ICONS[2] },
+      ]
+  );
 
   return (
     <section aria-label={t("how.eyebrow")} className="bg-page">
@@ -39,7 +44,7 @@ export default function HowItWorks() {
           {t("how.title")}
         </h2>
         <div className="mt-8 grid gap-6 md:grid-cols-3">
-          {steps.map((step) => (
+          {items.map((step) => (
             <article key={step.number} className="rounded-2xl border border-border bg-white p-6">
               <div className="flex items-start justify-between">
                 <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-tile-soft text-brand">

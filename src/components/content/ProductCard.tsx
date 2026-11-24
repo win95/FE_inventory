@@ -5,33 +5,7 @@
 
 import Link from "next/link";
 import { useLocale } from "../LocaleProvider";
-
-export type ProductColor =
-  | "location"
-  | "retail"
-  | "measurement"
-  | "insight"
-  | "network"
-  | "adsmanager";
-
-export const PRODUCT_COLOR_LABEL: Record<ProductColor, string> = {
-  location: "Location-Based Channel",
-  retail: "Retail Media & Activation",
-  measurement: "Measurement",
-  insight: "Insights",
-  network: "Network",
-  adsmanager: "Ads Manager",
-};
-
-// Class Tailwind phải viết tường minh để trình quét class tìm thấy.
-const PRODUCT_THEME: Record<ProductColor, { bar: string; badge: string; soft: string }> = {
-  location: { bar: "bg-p-location", badge: "bg-p-location text-p-location-on", soft: "bg-p-location-light text-p-location-dark" },
-  retail: { bar: "bg-p-retail", badge: "bg-p-retail text-p-retail-on", soft: "bg-p-retail-light text-p-retail-dark" },
-  measurement: { bar: "bg-p-measurement", badge: "bg-p-measurement text-p-measurement-on", soft: "bg-p-measurement-light text-p-measurement-dark" },
-  insight: { bar: "bg-p-insight", badge: "bg-p-insight text-p-insight-on", soft: "bg-p-insight-light text-p-insight-dark" },
-  network: { bar: "bg-p-network", badge: "bg-p-network text-p-network-on", soft: "bg-p-network-light text-p-network-dark" },
-  adsmanager: { bar: "bg-p-adsmanager", badge: "bg-p-adsmanager text-p-adsmanager-on", soft: "bg-p-adsmanager-light text-p-adsmanager-dark" },
-};
+import { PRODUCT_COLOR_LABEL, PRODUCT_THEME, type ProductColor } from "@/lib/product-theme";
 
 export interface ProductCardProps {
   name: string;

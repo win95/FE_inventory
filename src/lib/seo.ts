@@ -5,9 +5,8 @@
 // - Mọi trang locale đều dùng pageMetadata(): canonical tự trỏ (FIX-02),
 //   hreflang vi + en + x-default (FIX-03/04), Open Graph + Twitter.
 // - JSON-LD: Organization + WebSite gắn ở [locale]/layout.tsx. SearchAction
-//   CHƯA gắn vì /search chưa có thật (R1-5, FE 45-47) — gắn schema trỏ URL
-//   404 là lỗi SEO. sameAs (mạng xã hội) bổ sung ở R1-5 khi SOC-01 chốt
-//   URL thật, không đoán URL.
+//   gắn từ R1-5 (FE 45-47) vì /search đã có thật. sameAs (mạng xã hội) vẫn
+//   CHƯA gắn — chỉ bổ sung khi SOC-01 chốt URL thật, không đoán URL.
 import type { Metadata } from "next";
 import { LOCALES, type Locale } from "./i18n";
 
@@ -41,6 +40,10 @@ export interface PageMetadataInput {
 export function pageMetadata({ locale, path, title, description }: PageMetadataInput): Metadata {
   const url = localizedUrl(locale, path);
   return {
+    // metadataBase để ảnh OG (file opengraph-image.tsx) và mọi URL tương
+    // đối trong metadata ra URL tuyệt đối với domain thật — không có nó,
+    // Next dùng http://localhost:3000 (cảnh báo ở log build).
+    metadataBase: new URL(SITE_URL),
     title,
     description,
     alternates: alternatesFor(locale, path),
@@ -51,6 +54,19 @@ export function pageMetadata({ locale, path, title, description }: PageMetadataI
       siteName: "AWING",
       locale: locale === "vi" ? "vi_VN" : "en_US",
       type: "website",
+      // Ảnh OG mặc định: file [locale]/opengraph-image.tsx. Đặt tường minh
+      // ở đây vì trang nào tự định nghĩa generateMetadata (vd /search,
+      // /contact) thì Next không gắn ảnh file-based nữa — chỉ trang không
+      // có generateMetadata riêng (vd home) mới tự nhận ảnh file. URL theo
+      // locale để ảnh đúng ngôn ngữ (file [locale]/opengraph-image.tsx).
+      images: [
+        {
+          url: `${SITE_URL}/${locale}/opengraph-image`,
+          width: 1200,
+          height: 630,
+          alt: "AWING — Connecting Brands with Real-World Consumer Moments",
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
@@ -77,6 +93,15 @@ export function websiteJsonLd() {
     name: "AWING",
     url: SITE_URL,
     inLanguage: [...LOCALES],
+    // /search có thật từ R1-5 (FE 46) — target dùng locale vi (x-default).
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${SITE_URL}/vi/search?q={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
   };
 }
 

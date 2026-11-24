@@ -27,6 +27,8 @@ const PUBLIC_ACTIONS = [
   'api::partner.partner.findOne',
   'api::customer.customer.find',
   'api::customer.customer.findOne',
+  'api::faq.faq.find',
+  'api::faq.faq.findOne',
   // Single type chỉ có find (không có findOne).
   'api::data-snapshot.data-snapshot.find',
   'api::global.global.find',

@@ -576,10 +576,272 @@ push nên nhánh này mang theo cả R1-1.
   events/stats + 1 console 400 trong log test là nhiễu kiểm thử: SSE bị
   hủy khi chuyển trang, và 400 là lần nhập mã OTP sai có chủ ý (backend
   log chỉ có 200 cho SSE + 400 cho 2 lần verify sai).
-- **Chưa xong:** BE 7 (migrate 118 news + 12 FAQ, chờ bản xuất dữ liệu);
-  BE 8 phía FastAPI (webhook → revalidate); CRM/email/Turnstile thật (chờ
-  quyết định #1, #4); trang /products, /resources, /events, /news, /about,
-  /careers (R1-3/R1-4) — link trong menu/footer hiện mờ tới lúc đó.
+- **Chưa xong:** CRM/email/Turnstile thật (chờ quyết định #1, #4); trang
+  /products, /resources, /events, /news, /about, /careers (R1-3/R1-4) —
+  link trong menu/footer hiện mờ tới lúc đó. (BE 7 và BE 8 đã xong dạng
+  giả lập ở §6.14.)
+
+### 6.14. R1: dữ liệu giả toàn bộ + API BE mới (23/11/2026 — theo lệnh của tran "làm hết R1 + API BE lấy dữ liệu giả lập trong sqlite", "Strapi cũng tạo dữ liệu giả lập trong database")
+
+- **Seed Strapi** (`cms/scripts/seed-fake-content.js`, `npm run seed`,
+  `--force` để tạo lại): 6 Product + 26 Solution + 4 AdFormat + 12
+  Resource + 6 Event + 118 Article + 6 Job + 8 Partner + 6 Customer +
+  3 CaseStudy + 12 FAQ + DataSnapshot + Global + Home — vi + en, đã
+  publish. Loại mới: **Faq** (`cms/src/api/faq/`); Partner/Customer thêm
+  cờ `consent` (chỉ hiện logo khi đồng ý; seed có 1 partner
+  `consent=false` để kiểm tra). Đã kiểm chứng trên SQLite tạm: đủ số
+  lượng mọi loại ở cả vi và en qua REST, relation đúng cả 2 locale, 1
+  partner consent=false. 2 lưu ý đã kiểm chứng: (1) relation lưu **theo
+  từng locale** nên seed đặt relation ở cả vi và en; (2) richtext ở
+  project này validate dạng **string** (không phải Blocks JSON) nên seed
+  ghi text thuần, FE render bằng cách tách đoạn. Chạy trên máy tran:
+  `cd cms && npm run seed` (Postgres trong Compose; idempotent — loại
+  nào có dữ liệu thì bỏ qua).
+- **BE 8 — webhook → revalidate** (`app/revalidate.py`): FastAPI nhận
+  webhook Strapi rồi gọi `POST /api/revalidate` của Frontend với secret
+  chung, xóa tag `strapi:<collection>` (vd. article → strapi:articles,
+  case-study → strapi:case-studies). Cần `FRONTEND_URL` +
+  `REVALIDATE_SECRET` trùng với Frontend; thiếu secret thì bỏ qua (chỉ
+  còn SSE). Lỗi revalidate chỉ ghi log, webhook vẫn trả 200. Đã kiểm
+  chứng bằng stub: đủ 3 tag (articles, case-studies, widgets).
+- **BE 15 — đăng ký sự kiện**: `POST /api/events/{slug}/register`
+  (201; trùng email+sự kiện trong 24h → `duplicate: true`; thiếu consent
+  → 400). Email xác nhận kèm file .ics (từ startDate/endDate FE gửi kèm),
+  đẩy CRM qua hàng đợi `crm_outbox` (worker 30s, cùng luật retry với
+  `crm_jobs`). Bảng `event_registrations`.
+- **BE 16 — nộp CV**: `POST /api/jobs/{slug}/apply` (multipart: PDF/DOCX
+  ≤ 5 MB, kiểm tra magic bytes; sai loại/quá 5 MB/thiếu consent → 400).
+  File lưu ở `UPLOADS_DIR/cv/` (tên UUID), quét virus **giả lập** (ghi
+  log, chưa có ClamAV), đẩy HR qua `crm_outbox`. Cần
+  `python-multipart` (đã thêm vào `requirements.txt`). Bảng
+  `job_applications`.
+- **BE 17 — newsletter double opt-in**: `POST /api/newsletter` lưu
+  pending + gửi link xác nhận (token chỉ lưu dạng hash, hết hạn 7 ngày);
+  `GET /api/newsletter/confirm?token=...` xác nhận (dùng 1 lần; sai/hết
+  hạn → 400). Đã xác nhận rồi thì đăng ký lại không gửi lại link. Link
+  trỏ về `{FRONTEND_URL}/{locale}/newsletter/confirm?token=...` (trang
+  FE ở R1-5).
+- **BE 18-20 — tìm kiếm** (`GET /api/search`, không Meilisearch): đọc
+  nội dung công khai từ Strapi (`STRAPI_URL`, cache 5 phút), khớp không
+  dấu (cả "wifi" khớp "Wi-Fi"), lọc `locale` (vi/en/all — mặc định
+  locale đang xem, SRCH-03) + `market` + `type`, đếm facet theo loại.
+  Trả `source: strapi|fallback`; khi Strapi không tới được thì dùng chỉ
+  mục dự phòng (6 sản phẩm + 26 solution, dữ liệu tĩnh trong code).
+  Đã kiểm chứng live: `heatmap` en 4 bài, `bản đồ nhiệt` vi 4 bài,
+  `wifi` vi 37 / all 74, fallback `retail` 2 kết quả.
+- **BE 9/10/21-24 — hạ tầng:** media R1 dùng upload local Strapi +
+  `next/image` AVIF/WebP (`remotePatterns` theo host Strapi trong
+  `next.config.ts` — tsc sạch); object storage/CDN, IP/VPN, role
+  Editor/Author, CI/CD, Sentry, backup định kỳ là bước triển khai — đã
+  ghi rõ cách làm trong `cms/README.md` (BE 9-10) và README của
+  BE_inventory (BE 21-24), không dựng hạ tầng thật trong R1.
+
+### 6.15. R1-3: Home mới + Products/Solutions/AdFormats (FE 22-32, 23/11/2026)
+
+- **Trang Home mới** (`src/app/[locale]/page.tsx`, server): hero từ Home
+  single + tab 6 sản phẩm (màu/CTA đổi theo tab), 6 thẻ sản phẩm, bước
+  HowItWorks từ CMS, dải snapshot từ DataSnapshot single (6 chỉ số, ngày
+  cập nhật — không dùng SSE realtime nữa), showcase mới nhất (2 News + 2
+  Resource + 2 Event), CTA cuối trang mở dialog lead theo source, form
+  lead nhúng ở cuối. Hero prompt + heatmap + StatsStrip cũ không còn ở
+  Home (heatmap/số realtime ở /locations, prompt ở /advertisers); 4
+  component cũ vẫn nằm trong cây để R2 dùng lại cho trang Data.
+- **Trang /products** (FE 28): thẻ infographic (số thứ tự, nhãn mục tiêu,
+  tên, slogan, mô tả, tối đa 4 solution, ảnh cover khi có, link chi
+  tiết), `data-product` trên mỗi thẻ.
+- **Trang /products/{product}** (FE 29): hero riêng + Opportunity +
+  Solutions + How to plan + Showcase + Lead form — tất cả từ dynamic-zone
+  blocks của Strapi (trừ block hero: trang tự render hero để khỏi lặp
+  tiêu đề). Breadcrumb + BreadcrumbList schema.
+- **Trang /products/{product}/{solution}** (FE 30): nội dung từ blocks
+  của solution, solution cùng sản phẩm, case study mới nhất, Breadcrumb +
+  schema. URL khớp với `/api/search` của BE.
+- **Trang /ad-formats** (FE 31): lọc theo loại (video/banner/chữ — trường
+  `formatType` mới thêm vào schema AdFormat + seed), xem trước trên khung
+  điện thoại, bảng thông số; iframe sandboxed + lazy chỉ render khi format
+  có previewUrl (dữ liệu R1 chưa có).
+- **Tầng dữ liệu** (`src/lib/strapi.ts`): fetchers products/solutions/
+  ad-formats/resources/events/articles/home/snapshot + `mapStrapiBlocks`
+  (DZ → Block) + `strapiSingle`/`strapiBySlug`; `pageSize` đặt rõ (mặc
+  định Strapi chỉ trả 25 — 118 bài News cần 200). Ảnh CMS qua `CmsImage`
+  (next/image, alt bắt buộc, lazy, AVIF/WebP). Dialog lead mở từ mọi
+  client component qua `LeadContext` (`useOpenLead`, source ghi rõ CTA).
+- **2 lỗi thật bắt được khi verify:**
+  1. Theme sản phẩm đặt trong `ProductCard` (client component) nên trang
+     server chỉ thấy client reference stub (undefined) → /products và
+     trang chi tiết crash "Cannot read properties of undefined (reading
+     'bar')". Sửa: chuyển `PRODUCT_THEME` + `PRODUCT_COLOR_LABEL` +
+     `ProductColor` sang module thuần `src/lib/product-theme.ts`.
+  2. Strapi chỉ trả component trong dynamic zone khi `populate=blocks`,
+     còn repeatable lồng trong đó (items/steps) thì KHÔNG — phải thêm
+     `populate[blocks][populate]=*`. Và Strapi cấm trộn 2 dạng populate
+     trong 1 request (chuỗi "a,b" + object → 400; trộn `populate[x]=*`
+     với `populate[y][populate]=*` cũng 400) nên `appendPopulate` dùng
+     thống nhất dạng `populate[x][populate]=*` khi có deep populate.
+- **Next 16 + cacheComponents:** `export const dynamic = "force-dynamic"`
+  bị cấm → trang CMS dùng `await connection()` + `export const instant =
+  false` (route chặn, đọc Strapi ở mỗi request). Hai route động cùng vị
+  trí phải cùng tên param: `/products/[slug]` đổi thành
+  `/products/[product]` (trùng với route solution).
+- **Verify 23/11 (Playwright, 33/33):** home (hero + tab Measurement đổi
+  nội dung, 6 thẻ, snapshot 25.400.000, showcase, CTA mở dialog), danh
+  sách 6 sản phẩm + số thứ tự + data-product, chi tiết Measurement (đủ 5
+  khối + lead form + BreadcrumbList), solution Footfall Attribution
+  (siblings + case study), ad-formats (lọc Video/Chữ, bảng thông số,
+  phone preview), EN + 404. Lint 0 lỗi, tsc sạch, build pass.
+
+### 6.16. R1-4: Resources, Events, News, Company, Jobs, FAQ (FE 33-44, 23/11/2026)
+
+- **Thay đổi schema Strapi (nhỏ, có backfill):** Case Study thêm `slug`
+  (uid từ title) để có trang /case-studies/[slug] + link từ Customers;
+  Resource thêm `industry` (string) để lọc theo ngành ở /resources. Seed
+  đã cập nhật cả 2 trường; DB đã seed trước đó được backfill bằng
+  `cms/scripts/backfill-r14.js` (3 slug + 12 industry, chạy 1 lần trên
+  cms/.tmp/seed.db, đã verify qua REST).
+- **Trang mới:** /resources (lọc loại/ngành/năm qua URL, phân trang 6) +
+  /resources/[slug] (T.Article + schema Article); /events (tab Sắp diễn
+  ra/Đã diễn ra theo ngày bắt đầu, lọc hình thức) + /events/[slug]
+  (chương trình, diễn giả, form đăng ký BE 15 khi chưa diễn ra, nút tải
+  .ics, schema Event); /news (118 bài, lọc chuyên mục, phân trang 12) +
+  /news/[slug] (T.Article + NewsArticle + tin liên quan); /case-studies/
+  [slug] (T.Article); /about (định vị + số liệu + văn phòng thật —
+  timeline/team chưa có dữ liệu CMS nên chỉ ghi chú chờ cập nhật, không
+  bịa tên người/cột mốc); /partners (3 nhóm, CHỈ consent=true — đối tác
+  consent=false không hiện); /customers (tên + testimonial + link case
+  study); /investors (định vị + số liệu công khai + liên hệ); /privacy,
+  /terms, /cookies (T.Page, bản tóm tắt R1 — văn bản pháp lý đầy đủ do
+  AWING ban hành sau); /careers (lọc phòng ban/địa điểm, ẩn vị trí hết
+  hạn) + /careers/[slug] (mô tả + yêu cầu + form nộp CV BE 16 + schema
+  JobPosting); /faq (accordion theo nhóm + schema FAQPage);
+  /newsletter/confirm (đích của link xác nhận BE 17 — trang server gọi
+  thẳng BE bằng token trong URL, token không lộ ra client).
+- **Component dùng chung mới:** ArticleTemplate (header + mục lục tự động
+  từ tiêu đề "## " + nội dung + khối liên quan + JSON-LD), RichText
+  (đoạn văn + tiêu đề), ShareButtons (sao chép link + X/LinkedIn/
+  Facebook), FaqAccordion, EventRegistrationForm, CvApplicationForm
+  (kiểm tra file PDF/DOCX ≤ 5 MB ngay trên trình duyệt, cả đuôi lẫn
+  magic bytes), ServerPagination (link giữ bộ lọc).
+- **Footer:** đã bật link tới /products/*, /resources (theo loại),
+  /events, /news, /about, /partners, /customers, /investors, /careers,
+  /faq, /privacy, /terms, /cookies — chỉ còn Data (R2) và mạng xã hội
+  (SOC-01) vẫn mờ.
+- **3 lỗi thật bắt được khi verify:**
+  1. `fetchEvents`/`fetchArticles` map trường `summary` không tồn tại
+     (Event có `description`, Article có `content`) nên thẻ showcase ở
+     Home và danh sách đều trống mô tả — đã sửa: tóm tắt = đoạn đầu
+     của richtext (`richTextExcerpt`).
+  2. Strapi giới hạn `pageSize` tối đa 100 — `pageSize=200` chỉ trả 100
+     trong 118 bài News (trang 10 biến mất). Đã sửa: `fetchArticles`
+     đọc nối 2 trang (100 + 18); `strapiList` thêm tham số `page`.
+  3. Trang /newsletter/confirm đọc `searchParams` nên build lỗi
+     prerender — đã thêm `await connection()` + `export const instant
+     = false` như các trang CMS khác.
+- **Verify 23/11 (Playwright, 53/53):** resources (lọc loại/ngành/năm,
+  phân trang, chi tiết + Article JSON-LD), events (tab upcoming/past,
+  lọc online, chi tiết + agenda/speakers, đăng ký thật → thành công +
+  nút .ics, sự kiện cũ không form), news (12/trang, 10 trang, lọc
+  chuyên mục, chi tiết + NewsArticle JSON-LD), case study, about
+  (số liệu + VCCI), partners (ẩn consent=false), customers, investors,
+  3 trang pháp lý, careers (lọc Sales/Hà Nội, chi tiết + JobPosting,
+  nộp CV PDF thật → thành công, CV .txt bị từ chối), FAQ (accordion +
+  FAQPage JSON-LD), newsletter confirm (không token / token đúng / dùng
+  lại token), footer link đã bật, link showcase ở Home mở được, EN.
+  Lint 0 lỗi, tsc sạch, build pass.
+- **Chưa làm được trong R1-4:** bộ lọc Resources theo sản phẩm (schema
+  Resource không có relation product — cần thêm ở CMS); trang About
+  chưa có timeline/team thật (chờ nội dung CMS); mục lục T.Article chỉ
+  hiện khi biên tập viên viết tiêu đề "## " (nội dung seed R1 toàn đoạn
+  văn); sự kiện cũ chưa có recap slides/video (seed không có).
+
+### 6.17. R1-5: Search + Social/OG + Contact + E2E + Responsive + Web Vitals (FE 45-54, 23/11/2026)
+
+- **FE 45-47 — tìm kiếm:** `SearchOverlay` gọi `GET /api/search` của
+  FastAPI (BE 18-20) thay cho danh mục tĩnh: debounce 200 ms, chống
+  phản hồi cũ đè mới (số thứ tự request), điều hướng bằng phím mũi tên
+  + Enter, Esc đóng, Ctrl+K hoặc `/` mở (SiteChrome), link "Xem tất
+  cả" sang /search. BE không tới được → dùng lại danh mục tĩnh 6 sản
+  phẩm + 26 solution + trang (cùng cách khớp không dấu). Phạm vi ngôn
+  ngữ: mặc định locale hiện tại, có lựa chọn "Tất cả ngôn ngữ". Trang
+  **/search** (server, `connection()` + `instant = false`): query +
+  tab + locale trong URL, tab Tất cả/Sản phẩm (products+solutions)/
+  Tài nguyên/Sự kiện/Tin tức/Tuyển dụng với số đếm từ facet của BE,
+  phân trang 12, trạng thái rỗng. Tab "Data" chưa có — BE chưa index
+  nội dung dữ liệu (mạng lưới/bản đồ nhiệt), không hiện tab luôn bằng
+  0; thêm khi R2 có index dữ liệu. JSON-LD WebSite thêm `SearchAction`
+  trỏ `/vi/search?q={search_term_string}` (giờ /search đã có thật).
+  `src/lib/api.ts` thêm `searchContent()` + kiểu `SearchResultItem`/
+  `SearchResponse`.
+- **FE 48 — mạng xã hội:** link Facebook/LinkedIn/YouTube/Zalo OA/
+  TikTok ở footer + trang Contact lấy từ single Global trong Strapi
+  (`fetchGlobal`, tag `strapi:global` — sửa URL trong CMS là đổi luôn
+  cả 2 nơi). URL hiện tại là giá trị seed R1 (facebook.com/
+  awingvietnam…) — **SOC-01 chưa chốt URL thật**, cần tran xác nhận/
+  sửa trong Strapi trước go-live. `sameAs` trong JSON-LD vẫn CHƯA gắn
+  (chỉ gắn khi SOC-01 chốt URL thật, không đoán URL).
+- **FE 49 — OG image:** `src/app/[locale]/opengraph-image.tsx`
+  (ImageResponse, 1200×630, nền đỏ + tagline theo locale) + `images`
+  tường minh trong `pageMetadata()` (URL theo locale) + `metadataBase:
+  new URL(SITE_URL)` (không có thì Next dùng http://localhost:3000 cho
+  ảnh OG). ShareButtons đã có từ R1-4 (sao chép link + X/LinkedIn/
+  Facebook). Trang chi tiết có cover thật sẽ ghi đè `openGraph.images`
+  riêng khi CMS có ảnh.
+- **FE 50 — Contact:** trang thành server component: form liên hệ cũ
+  tách ra `ContactForm.tsx` (không đổi hành vi), thêm bản đồ trụ sở Hà
+  Nội (Google Maps embed, không cần API key + link "Mở trên Google
+  Maps"), link mạng xã hội từ Global, và form lead nhúng (`LeadForm`
+  mode embedded, source="contact").
+- **FE 51 — E2E trong repo:** `e2e/` (Playwright, `@playwright/test`
+  1.49.1 — phải khớp đúng bản này vì VM chỉ có chromium-1148; bản
+  1.65.1 đòi chromium_headless_shell-1255 không có sẵn): `lead-otp`
+  (Get data → form → mã sai còn 4 lần → mã đúng đọc từ log email giả
+  lập của BE → bổ sung hồ sơ → đóng), `redirects` (2 redirect 308),
+  `search` (gợi ý + phím + Esc + tab /search). Chạy:
+  `E2E_BASE_URL=http://127.0.0.1:3100 BE_LOG_PATH=/tmp/be-*.log npx
+  playwright test --config e2e/playwright.config.ts` (xem
+  `e2e/README.md`). Script verify R1-2 cũ (`/tmp/pw-i18n/verify-r12.js`)
+  đã mất khi /tmp bị dọn — bộ E2E trong repo thay thế nó.
+- **FE 52 — responsive + a11y:** kiểm tra 360/768/1024/1440 (home,
+  news) + Tab tới được nút tìm kiếm. Sửa 2 lỗi tràn ở 360px: tab sản
+  phẩm ở HomeHero (ui/Tabs cuộn ngang + `whitespace-nowrap`) và phân
+  trang (ServerPagination + ui/Pagination cho phép xuống dòng).
+- **FE 53 — Web Vitals:** đo local bằng PerformanceObserver (gắn trước
+  khi tải trang, context mới để transferSize là byte mạng thật): home
+  LCP 557ms / CLS 0 / JS 194KB, product LCP 259ms / CLS 0 — đều đạt
+  (LCP < 2.5s, CLS < 0.1, JS < 200KB). Lưu ý: JS tính theo **transfer**
+  (byte mạng, 194KB); dung lượng giải mã là 626KB. Không chạy
+  Lighthouse trên VM này (chưa cài) — số trên là đo local, không phải
+  Lighthouse.
+- **FE 54 — UAT + go-live:** của tran (chưa làm).
+- **4 lỗi thật bắt được khi verify R1-5:**
+  1. CSP `frame-src 'none'` chặn iframe Google Maps ở /contact — đã
+     sửa: `frame-src https://www.google.com` (chỉ đúng origin này)
+     trong `next.config.ts`.
+  2. Layout đọc Global (fetch `strapi:global` không cache) làm build
+     lỗi prerender ở trang tĩnh /advertisers — đã sửa: `strapiSingle`
+     thêm tham số `cache`, `fetchGlobal` dùng `cache: "force-cache"`
+     (revalidate bằng tag khi Strapi publish, BE 8). Trang động vẫn
+     đọc mới mỗi request như cũ.
+  3. Ảnh OG: file `opengraph-image.tsx` đặt ở gốc (`src/app/`) thì
+     Next KHÔNG gắn vào các trang [locale] (HTML không có og:image);
+     đặt trong `[locale]/` mới có. Thêm nữa, trang nào tự định nghĩa
+     `generateMetadata` (vd /search, /contact) thì Next cũng không
+     gắn ảnh file-based — chỉ trang không có generateMetadata riêng
+     (vd home) mới tự nhận. Đã sửa: đặt file trong `[locale]/` +
+     `images` tường minh trong `pageMetadata()` + `metadataBase`.
+     Middleware cũng đã loại trừ `opengraph-image`/`twitter-image`
+     khỏi chuyển hướng locale (không thì URL ảnh bị 307 về
+     /vi/opengraph-image → 404).
+  4. `runtime = "edge"` trên opengraph-image.tsx bị cacheComponents
+     cấm — đã bỏ (ImageResponse chạy được ở Node runtime).
+- **Verify 23/11 (Playwright, 34/34 + E2E 6/6 + hồi quy R1-3 33/33 +
+  R1-4 53/53):** overlay (Ctrl+K, gợi ý API, ArrowDown+Enter tới đúng
+  gợi ý, Esc, scope=all), /search (tab + số đếm, tab news đổi URL,
+  trạng thái rỗng, locale=all), social footer/contact, SearchAction
+  JSON-LD, OG (PNG 200, og:image ở home/search/contact), contact
+  (form/bản đồ/lead nhúng/socials/VCCI), responsive 360-1440 không
+  tràn, Tab tới nút tìm kiếm, Web Vitals đạt, không console/pageerror
+  mới. Lint 0 lỗi, tsc sạch, build pass. **R1 hoàn tất** (FE 1-54 trừ
+  FE 54 UAT của tran + BE 1-26) — chờ tran duyệt để push nhánh `r1-2`.
 
 ## 7. Thứ tự chạy toàn bộ (checklist)
 

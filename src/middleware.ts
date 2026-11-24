@@ -17,6 +17,8 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|icon.svg|_not-found|.*\\..*).*)",
+    // opengraph-image/twitter-image là file metadata ở gốc — không chuyển
+    // hướng locale, nếu không URL ảnh OG bị 307 về /vi/opengraph-image (404).
+    "/((?!api|_next/static|_next/image|favicon.ico|icon.svg|opengraph-image|twitter-image|_not-found|.*\\..*).*)",
   ],
 };

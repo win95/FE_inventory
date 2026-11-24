@@ -58,7 +58,9 @@ function buildCsp(): string {
     `img-src ${imgSrc.join(" ")}`,
     "font-src 'self' data:",
     `connect-src ${connectSrc.filter(Boolean).join(" ")}`,
-    "frame-src 'none'",
+    // FE 50: bản đồ Google Maps nhúng trên /contact (iframe www.google.com).
+    // Chỉ mở đúng origin này — không mở frame-src chung cho mọi site.
+    "frame-src https://www.google.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -80,6 +82,18 @@ const nextConfig: NextConfig = {
   // Output standalone để chạy trong Docker (xem Dockerfile): server Node
   // gọn nhẹ, chỉ cần .next/standalone + .next/static + public.
   output: "standalone",
+  // BE 9 (tạm, R1): media Strapi local upload + next/image tối ưu
+  // AVIF/WebP. Chưa có object storage/CDN riêng — khi có thì đổi
+  // remotePatterns sang host CDN. Host Strapi đọc từ env lúc build/chạy.
+  images: {
+    formats: ["image/avif", "image/webp"],
+    remotePatterns: (() => {
+      const origin = originOf(process.env.NEXT_PUBLIC_STRAPI_URL);
+      if (!origin) return [];
+      const url = new URL(origin);
+      return [{ protocol: url.protocol.replace(":", "") as "http" | "https", hostname: url.hostname, port: url.port || undefined, pathname: "/uploads/**" }];
+    })(),
+  },
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,

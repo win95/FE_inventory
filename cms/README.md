@@ -21,7 +21,7 @@ npm run develop        # http://localhost:1337/admin
 
 Lần đầu mở admin, tạo tài khoản admin đầu tiên trên giao diện.
 
-## Content types (R1-1, BE 1-10 — 11 loại trong `src/api/`)
+## Content types (R1-1, BE 1-10 — 14 loại trong `src/api/`)
 
 | Loại | Kiểu | Ghi chú |
 |---|---|---|
@@ -33,8 +33,9 @@ Lần đầu mở admin, tạo tài khoản admin đầu tiên trên giao diện
 | Resource | Collection Type | Tài nguyên (RES-01): title, slug, type (report/paper/case-study), summary, content, cover, file (PDF), publishedDate, market, SEO. |
 | Event | Collection Type | Sự kiện (EVT-01/02): title, slug, description, startDate, endDate, mode (online/offline/hybrid), location, agenda, speakers, cover, market, SEO. |
 | Job | Collection Type | Tuyển dụng (JOB-01/02): title, slug, department, location, type (full-time/part-time/contract/internship), description, requirements, deadline, market, SEO. |
-| Partner | Collection Type | Đối tác (COMP-02): name, slug, logo, website, category, description, market. |
-| Customer | Collection Type | Khách hàng (COMP-03): name, slug, logo, industry, testimonial, caseStudy (relation), market. |
+| Partner | Collection Type | Đối tác (COMP-02): name, slug, logo, website, category, description, consent (hiện logo chỉ khi đồng ý), market. |
+| Customer | Collection Type | Khách hàng (COMP-03): name, slug, logo, industry, testimonial, caseStudy (relation), consent, market. |
+| Faq | Collection Type | FAQ (FE 44, BE 7): question, answer, category, order, slug, market, SEO. Hiển thị accordion + schema FAQPage. |
 | Data Snapshot | Single Type | Snapshot số liệu công khai (DATA-01, R1 tạm thay Data API): snapshotDate, metrics (JSON), note. R2 thay bằng ETL + Data API. |
 | Global | Single Type | Cấu hình chung: siteName, contactEmail, defaultSeo, socialLinks. |
 | Home | Single Type | Nội dung trang chủ: heroTitle, heroSubtitle, statsNote, howItWorks, SEO. |
@@ -59,14 +60,53 @@ locale). Single Type không có `market` (Global dùng chung; Data Snapshot
 R1 chưa phân theo market).
 
 Trạng thái BE 1-10 (23/11/2026, đã verify boot + endpoint trên DB SQLite
-tạm): BE 1-6 xong. BE 7 (migrate 118 bài news + 12 FAQ) **chưa làm** — cần
-bản xuất dữ liệu từ site cũ, chưa có. BE 8: webhook Strapi → FastAPI đã có
-từ trước; phía FastAPI dịch webhook thành lời gọi revalidate sang Next.js
-là việc của repo BE_inventory (chưa làm). BE 9 (media object storage + CDN)
-và BE 10 (bảo mật admin IP/VPN + role Editor/Author) là việc hạ tầng, chưa
-làm — cần quyết định khi triển khai.
+tạm): BE 1-6 xong. BE 7 xong dạng **dữ liệu giả lập** (xem mục seed bên
+dưới): 118 bài news + 12 FAQ được tạo bằng script, đã đối soát đủ số lượng
+vi+en qua REST; bản migrate dữ liệu thật từ site cũ vẫn chờ BA giao bản
+xuất. BE 8: webhook Strapi → FastAPI đã có từ trước; phía FastAPI dịch
+webhook thành lời gọi revalidate sang Next.js là việc của repo BE_inventory
+(chưa làm). BE 9 (media object storage + CDN) và BE 10 (bảo mật admin
+IP/VPN + role Editor/Author) là việc hạ tầng, chưa làm — cần quyết định
+khi triển khai.
 
-## Quyền public và webhook — tự động qua bootstrap
+## Dữ liệu giả lập — seed (R1, BE 7 fake)
+
+Script `scripts/seed-fake-content.js` tạo toàn bộ nội dung giả cho R1
+(6 Product + 26 Solution + 4 AdFormat + 12 Resource + 6 Event + 118 Article
++ 6 Job + 8 Partner + 6 Customer + 3 CaseStudy + 12 FAQ + DataSnapshot +
+Global + Home), vi + en, đã publish:
+
+```bash
+npm run seed            # chỉ tạo loại nào đang trống (idempotent)
+npm run seed -- --force # xoá hết dữ liệu đã seed rồi tạo lại
+```
+
+Chạy trên Postgres thật (Compose) hoặc SQLite tạm
+(`DATABASE_CLIENT=sqlite DATABASE_FILENAME=tmp/seed.db npm run seed`).
+Đã kiểm chứng 23/11 trên SQLite tạm: đủ số lượng mọi loại ở cả vi và en
+qua REST, relation product/solutions/ad-format/case-study đúng ở cả 2
+locale, 1 partner `consent=false` để kiểm tra bộ lọc. Hai lưu ý kỹ thuật
+đã kiểm chứng: (1) relation lưu **theo từng locale** nên seed đặt relation
+ở cả bản vi và bản en; (2) trường richtext ở project này validate dạng
+**string** (không phải Blocks JSON) nên seed ghi text thuần, FE render
+bằng cách tách đoạn.
+
+## Media và bảo mật admin (BE 9-10 — R1 tạm + bước triển khai)
+
+- **BE 9 — Media:** R1 dùng upload local của Strapi (`public/uploads`,
+  phục vụ tại `/uploads/**`); Frontend tối ưu ảnh bằng `next/image`
+  (AVIF/WebP — xem `images` trong `next.config.ts`, `remotePatterns`
+  theo host Strapi từ `NEXT_PUBLIC_STRAPI_URL`). Object storage + CDN
+  riêng là bước triển khai: khi có bucket, đổi upload provider của Strapi
+  sang S3-compatible rồi đổi `remotePatterns` sang host CDN — API và
+  component không đổi.
+- **BE 10 — Bảo mật admin:** giới hạn IP/VPN là cấu hình reverse proxy /
+  Compose khi triển khai (không có trong code). Vai trò Editor/Author tạo
+  trong admin (Settings → Roles): Editor được quyền create/update/publish
+  các collection, Author chỉ create/update bản nháp; cả 2 đều không được
+  chạm Settings, Users-permissions hay Webhooks. Không tạo role bằng
+  script — tạo tay 1 lần trong admin rồi kiểm tra lại sau mỗi lần seed
+  lại database.
 
 `src/index.ts` chạy mỗi lần Strapi khởi động:
 

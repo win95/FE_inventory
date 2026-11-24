@@ -9,10 +9,13 @@
 // text của Strapi sang đoạn văn sẽ làm cùng BE 6 khi dynamic zone có thật.
 "use client";
 
+import Link from "next/link";
+import CmsImage from "../CmsImage";
 import LeadForm from "../LeadForm";
 import { useLocale } from "../LocaleProvider";
 import Button from "../ui/Button";
 import { ContentCard, StatsCard } from "../content";
+import type { DictKey } from "@/lib/i18n";
 
 export type Block =
   | { type: "hero"; eyebrow?: string; title: string; subtitle?: string; ctaLabel?: string; ctaHref?: string }
@@ -35,7 +38,7 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
   );
 }
 
-function renderBlock(block: Block, index: number, t: (key: "docs.unknownBlock", vars?: Record<string, string>) => string) {
+function renderBlock(block: Block, index: number, t: (key: DictKey, vars?: Record<string, string>) => string) {
   switch (block.type) {
     case "hero":
       return (
@@ -73,6 +76,11 @@ function renderBlock(block: Block, index: number, t: (key: "docs.unknownBlock", 
               <div key={s.name} className="rounded-2xl border border-border bg-white p-5">
                 <h3 className="font-bold text-ink">{s.name}</h3>
                 <p className="mt-1 text-sm text-muted">{s.summary}</p>
+                {s.href && (
+                  <Link href={s.href} className="mt-3 inline-block text-sm font-semibold text-brand hover:text-brand-dark">
+                    {t("prod.viewSolution")}
+                  </Link>
+                )}
               </div>
             ))}
           </div>
@@ -124,8 +132,7 @@ function renderBlock(block: Block, index: number, t: (key: "docs.unknownBlock", 
       return (
         <Section key={index}>
           <figure>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={block.src} alt={block.alt} className="w-full rounded-2xl border border-border" />
+            <CmsImage src={block.src} alt={block.alt} className="w-full rounded-2xl border border-border" />
             {block.caption && <figcaption className="mt-2 text-center text-sm text-muted">{block.caption}</figcaption>}
           </figure>
         </Section>

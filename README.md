@@ -16,6 +16,7 @@ chức năng: xem Plan AWING 24 trang (`awing-plan-phan-tich-chuc-nang`).
   backend loop-push toàn bộ dữ liệu, trễ tối đa 1 phút; Frontend nhận qua SSE,
   mất SSE thì polling mỗi 60 giây.
 - **Chạy local:** `npm run dev` → http://localhost:3000 · `npm run build` · `npm run lint`
+- **E2E (R1-5):** `e2e/` (Playwright, xem `e2e/README.md`) — lead+OTP, 301, search. Cần stack local Strapi :1337 + BE :8000 + FE :3100.
 - **Env:** copy `.env.example` sang `.env.local` khi có API thật
 - **Setup toàn bộ hệ thống (Frontend + FastAPI + Strapi + Docker Compose):** xem `SETUP.md`
 - **Strapi CMS:** `cms/` (Strapi 5, TypeScript) — Article, Case Study, Product, Home; chạy cùng Postgres + Frontend bằng `docker-compose.yml`

@@ -118,6 +118,8 @@ export interface SuggestResponse {
 
 export interface CaseStudy {
   title: string;
+  /** Slug mới thêm R1-4 (backfill 23/11) — link tới /case-studies/[slug]. */
+  slug: string;
   industry: string;
   metricLabel: string;
   metricValue: number | null;
@@ -192,3 +194,189 @@ export type LoadState<T> =
   | { status: "empty" }
   | { status: "error"; message: string }
   | { status: "no-backend" };
+
+// --- Nội dung CMS từ Strapi (R1-3/R1-4) -----------------------------------
+// Kiểu đã map từ Strapi REST (xem src/lib/strapi.ts). Tên/slogan sản phẩm
+// và solution giữ nguyên tiếng Anh ở cả 2 locale (theo Figma); các trường
+// mô tả dịch theo locale. Richtext Strapi ở project này là string thuần
+// (đoạn cách nhau bằng dòng trống), không phải Blocks JSON.
+
+import type { ProductColor } from "./product-theme";
+
+export type ProductColorKey = ProductColor;
+
+export interface CmsSolutionSummary {
+  name: string;
+  slug: string;
+  summary: string;
+}
+
+export interface CmsProduct {
+  name: string;
+  slug: string;
+  tagline: string;
+  goal: string;
+  description: string;
+  color: ProductColorKey;
+  order: number;
+  coverUrl: string | null;
+  /** Solutions của sản phẩm (relation, đã populate). */
+  solutions: CmsSolutionSummary[];
+  /** Dynamic-zone blocks đã map sang kiểu Block của BlockRenderer. */
+  blocks: import("@/components/blocks/BlockRenderer").Block[];
+}
+
+export interface CmsSolution {
+  name: string;
+  slug: string;
+  summary: string;
+  productSlug: string;
+  productName: string;
+  blocks: import("@/components/blocks/BlockRenderer").Block[];
+}
+
+export type AdFormatType = "video" | "banner" | "text";
+
+export interface CmsAdFormat {
+  name: string;
+  slug: string;
+  description: string;
+  /** Loại định dạng (BE 5: trường formatType mới trên Strapi). */
+  formatType: AdFormatType;
+  durationSeconds: number | null;
+  metricLabel: string;
+  metricValue: number | null;
+  solutionSlug: string | null;
+  solutionName: string | null;
+}
+
+export interface CmsResource {
+  title: string;
+  slug: string;
+  summary: string;
+  type: string;
+  /** Ngành — trường mới thêm R1-4 (backfill 23/11) để lọc ở /resources. */
+  industry: string | null;
+  publishedDate: string | null;
+  /** Nội dung đầy đủ (richtext dạng string). */
+  content: string;
+}
+
+export interface CmsEventAgendaItem {
+  time: string;
+  title: string;
+}
+
+export interface CmsEventSpeaker {
+  name: string;
+  role: string;
+  company: string;
+}
+
+export interface CmsEvent {
+  title: string;
+  slug: string;
+  /** Tóm tắt = đoạn đầu của description (schema Event không có summary). */
+  summary: string;
+  /** Mô tả đầy đủ (richtext dạng string). */
+  content: string;
+  startDate: string | null;
+  endDate: string | null;
+  mode: string | null;
+  location: string | null;
+  agenda: CmsEventAgendaItem[];
+  speakers: CmsEventSpeaker[];
+}
+
+export interface CmsArticle {
+  title: string;
+  slug: string;
+  /** Tóm tắt = đoạn đầu của content (schema Article không có summary). */
+  summary: string;
+  /** Nội dung đầy đủ (richtext dạng string). */
+  content: string;
+  publishedDate: string | null;
+  category: string | null;
+}
+
+export interface CmsJob {
+  title: string;
+  slug: string;
+  description: string;
+  requirements: string;
+  department: string;
+  location: string;
+  type: string;
+  deadline: string | null;
+}
+
+export interface CmsPartner {
+  name: string;
+  slug: string;
+  description: string;
+  category: string;
+  website: string | null;
+  /** Chỉ hiển thị logo khi consent=true (FE 39). */
+  consent: boolean;
+}
+
+export interface CmsCaseStudyLink {
+  slug: string;
+  title: string;
+  metricLabel: string;
+  metricValue: number | null;
+}
+
+export interface CmsCustomer {
+  name: string;
+  slug: string;
+  industry: string;
+  testimonial: string;
+  consent: boolean;
+  caseStudy: CmsCaseStudyLink | null;
+}
+
+export interface CmsFaq {
+  slug: string;
+  question: string;
+  answer: string;
+  category: string;
+  order: number;
+}
+
+export interface CmsHowItWorksStep {
+  stepTitle: string;
+  stepText: string;
+}
+
+export interface CmsHome {
+  heroTitle: string;
+  heroSubtitle: string;
+  statsNote: string;
+  howItWorks: CmsHowItWorksStep[];
+}
+
+export interface CmsSnapshotMetric {
+  id: string;
+  value: number;
+  label: string;
+  trend: string | null;
+}
+
+export interface CmsDataSnapshot {
+  snapshotDate: string | null;
+  note: string;
+  metrics: CmsSnapshotMetric[];
+}
+
+export interface CmsSocialLink {
+  platform: string;
+  url: string;
+}
+
+/** Single Global (FE 48, SOC.01): tên site, email liên hệ, link mạng xã hội. */
+export interface CmsGlobal {
+  siteName: string;
+  contactEmail: string;
+  socialLinks: CmsSocialLink[];
+}
