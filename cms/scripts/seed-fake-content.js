@@ -493,7 +493,7 @@ const GLOBAL = {
 };
 
 const HOME = {
-  heroTitleVi: 'Connecting Brands with Real-World Consumer Moments',
+  heroTitleVi: 'Kết nối thương hiệu với những khoảnh khắc tiêu dùng thực tế',
   heroTitleEn: 'Connecting Brands with Real-World Consumer Moments',
   heroSubtitleVi: 'Quảng cáo theo vị trí thực: đến đúng người, đúng nơi, đúng lúc họ ra quyết định.',
   heroSubtitleEn: 'Location-based advertising: reach the right people, in the right place, at the moment they decide.',
@@ -547,7 +547,7 @@ function productBlocks(p, solutions, lang = 'vi') {
   }));
   const t = (vi, en) => (lang === 'vi' ? vi : en);
   return [
-    { __component: 'blocks.block-hero', title: p.name, subtitle: p.slogan, eyebrow: 'AWING Product', ctaLabel: 'Get data', ctaHref: '/contact' },
+    { __component: 'blocks.block-hero', title: p.name, subtitle: p.slogan, eyebrow: t('Sản phẩm AWING', 'AWING Product'), ctaLabel: t('Nhận dữ liệu', 'Get data'), ctaHref: '/contact' },
     { __component: 'blocks.block-opportunity', items: [
       { title: goal, text: desc },
       { title: t('Dữ liệu thật', 'Real data'), text: t('Đo lường bằng lượt ghé thăm và giao dịch thực, không ước lượng.', 'Measured by real visits and transactions, not estimates.') },

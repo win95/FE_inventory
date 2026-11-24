@@ -39,6 +39,16 @@ export interface PageMetadataInput {
 
 export function pageMetadata({ locale, path, title, description }: PageMetadataInput): Metadata {
   const url = localizedUrl(locale, path);
+  // Alt ảnh OG theo locale (alt tĩnh của opengraph-image.tsx chỉ có 1 bản).
+  const ogImage = {
+    url: `${SITE_URL}/${locale}/opengraph-image`,
+    width: 1200,
+    height: 630,
+    alt:
+      locale === "en"
+        ? "AWING — Connecting Brands with Real-World Consumer Moments"
+        : "AWING — Kết nối thương hiệu với khoảnh khắc đời thực",
+  };
   return {
     // metadataBase để ảnh OG (file opengraph-image.tsx) và mọi URL tương
     // đối trong metadata ra URL tuyệt đối với domain thật — không có nó,
@@ -59,19 +69,13 @@ export function pageMetadata({ locale, path, title, description }: PageMetadataI
       // /contact) thì Next không gắn ảnh file-based nữa — chỉ trang không
       // có generateMetadata riêng (vd home) mới tự nhận ảnh file. URL theo
       // locale để ảnh đúng ngôn ngữ (file [locale]/opengraph-image.tsx).
-      images: [
-        {
-          url: `${SITE_URL}/${locale}/opengraph-image`,
-          width: 1200,
-          height: 630,
-          alt: "AWING — Connecting Brands with Real-World Consumer Moments",
-        },
-      ],
+      images: [ogImage],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      images: [ogImage],
     },
   };
 }
