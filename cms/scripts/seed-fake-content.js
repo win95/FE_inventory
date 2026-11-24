@@ -27,7 +27,6 @@ const log = (...a) => console.log('[seed]', ...a);
 // định dạng Blocks JSON. Các đoạn nối nhau bằng dòng trống; FE render bằng
 // cách tách đoạn.
 const rt = (...texts) => texts.join('\n\n');
-const para = (text) => rt(text);
 
 // ---------------------------------------------------------------------------
 // 6 sản phẩm + 26 solution (khớp src/lib/products.ts — Figma mới 23/11)

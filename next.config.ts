@@ -48,6 +48,9 @@ function buildCsp(): string {
     connectSrc.push("http://localhost:8000", "http://localhost:1337");
   }
   const scriptSrc = ["'self'", "'unsafe-inline'"];
+  // React dev mode cần eval() để dựng lại callstack khi debug; production
+  // không dùng eval nên chỉ mở 'unsafe-eval' khi NODE_ENV khác production.
+  if (process.env.NODE_ENV !== "production") scriptSrc.push("'unsafe-eval'");
   if (process.env.NEXT_PUBLIC_GTM_ID) scriptSrc.push("https://www.googletagmanager.com");
   const imgSrc = ["'self'", "data:"];
   if (strapiOrigin) imgSrc.push(strapiOrigin);

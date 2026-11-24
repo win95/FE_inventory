@@ -18,6 +18,8 @@ services:
       NODE_ENV: development
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
       NEXT_PUBLIC_STRAPI_URL: ${NEXT_PUBLIC_STRAPI_URL:-http://localhost:1337}
+      # SSR trong container gọi Strapi qua tên service (localhost là chính container).
+      STRAPI_INTERNAL_URL: http://strapi:1337
       # Bật nếu sửa file mà không thấy reload (thường chỉ cần trên Docker Desktop/WSL):
       # WATCHPACK_POLLING: "true"
     volumes:

@@ -17,6 +17,18 @@ import type { CaseStudy, CmsCustomer, CmsFaq, CmsGlobal, CmsJob, CmsPartner } fr
 export const STRAPI_BASE_URL =
   process.env.NEXT_PUBLIC_STRAPI_URL?.replace(/\/$/, "") ?? "";
 
+// Địa chỉ gọi API Strapi. Phía server (SSR trong container Docker) thì
+// localhost:1337 là chính container frontend, không tới được Strapi — dùng
+// STRAPI_INTERNAL_URL (vd http://strapi:1337 trong docker compose) nếu có.
+// Trình duyệt và URL media vẫn dùng NEXT_PUBLIC_STRAPI_URL.
+function strapiFetchBase(): string {
+  if (typeof window === "undefined") {
+    const internal = process.env.STRAPI_INTERNAL_URL?.replace(/\/$/, "");
+    if (internal) return internal;
+  }
+  return STRAPI_BASE_URL;
+}
+
 export function isStrapiConfigured(): boolean {
   return STRAPI_BASE_URL.length > 0;
 }
@@ -77,7 +89,7 @@ export async function strapiList<T>(
   if (typeof window === "undefined" && tag) init.next = { tags: [tag] };
   let res: Response;
   try {
-    res = await fetch(`${STRAPI_BASE_URL}/api/${collection}?${params}`, init);
+    res = await fetch(`${strapiFetchBase()}/api/${collection}?${params}`, init);
   } catch {
     throw new ApiError(translate(locale, "api.strapiUnreachable"), 0);
   }
@@ -140,10 +152,14 @@ export async function strapiSingle<T>(
   if (cache) init.cache = cache;
   let res: Response;
   try {
-    res = await fetch(`${STRAPI_BASE_URL}/api/${single}?${params}`, init);
+    res = await fetch(`${strapiFetchBase()}/api/${single}?${params}`, init);
   } catch {
     throw new ApiError(translate(locale, "api.strapiUnreachable"), 0);
   }
+  // Single type chưa tạo/chưa publish nội dung → Strapi 5 trả 404. Coi như
+  // "chưa có nội dung" (giống collection rỗng trả []), không phải lỗi CMS —
+  // trang dùng giá trị mặc định thay vì 500.
+  if (res.status === 404) return null;
   if (!res.ok) {
     throw new ApiError(translate(locale, "api.strapiError", { status: String(res.status) }), res.status);
   }
@@ -165,7 +181,7 @@ export async function strapiBySlug<T>(
   if (typeof window === "undefined" && tag) init.next = { tags: [tag] };
   let res: Response;
   try {
-    res = await fetch(`${STRAPI_BASE_URL}/api/${collection}?${params}`, init);
+    res = await fetch(`${strapiFetchBase()}/api/${collection}?${params}`, init);
   } catch {
     throw new ApiError(translate(locale, "api.strapiUnreachable"), 0);
   }

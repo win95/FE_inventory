@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cacheTag } from "next/cache";
 import { notFound } from "next/navigation";
 import Footer from "@/components/Footer";
 import LocaleProvider from "@/components/LocaleProvider";
@@ -17,6 +18,19 @@ import { fetchGlobal } from "@/lib/strapi";
 // về /vi, đây chỉ là chốt chặn cuối). Metadata theo locale: canonical tự
 // trỏ + hreflang vi/en/x-default + Open Graph (FE 6); JSON-LD Organization
 // + WebSite gắn trong body (SearchAction thêm ở R1-5 khi /search có thật).
+
+// Global đọc trong "use cache" (Next 16 + cacheComponents): fetch
+// force-cache thôi không còn được coi là dữ liệu đã cache khi prerender,
+// layout sẽ chặn prerender mọi trang tĩnh (/privacy, /advertisers...).
+// Tag "strapi:global" để POST /api/revalidate xóa cache khi Strapi publish.
+// Lỗi phải bắt BÊN TRONG hàm cache: lỗi ném ra từ "use cache" làm hỏng
+// prerender (build fail) dù bên ngoài có .catch — Strapi lỗi/chưa có
+// Global (404) thì trả null, footer giữ nút mờ.
+async function getGlobal(locale: Locale) {
+  "use cache";
+  cacheTag("strapi:global");
+  return fetchGlobal(locale).catch(() => null);
+}
 
 export function generateStaticParams() {
   return LOCALES.map((locale) => ({ locale }));
@@ -49,7 +63,7 @@ export default async function LocaleLayout({
   if (locale !== "vi" && locale !== "en") notFound();
   // Link mạng xã hội (FE 48) lấy từ single Global — Strapi lỗi thì footer
   // giữ nút mờ, layout không crash.
-  const global = await fetchGlobal(locale as Locale).catch(() => null);
+  const global = await getGlobal(locale as Locale);
   return (
     <LocaleProvider locale={locale as Locale}>
       <script
