@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "./LocaleProvider";
+import { withLocale } from "@/lib/i18n";
+
 
 // Ô nhập ý tưởng chiến dịch ở Hero (F02) — cũng là Search bar của Home (F14).
 // Theo trang mẫu Figma: một thanh trắng duy nhất, icon tìm kiếm bên trái,
@@ -12,14 +14,14 @@ import { useLocale } from "./LocaleProvider";
 // không submit được.
 export default function CampaignPromptForm() {
   const router = useRouter();
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const [prompt, setPrompt] = useState("");
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     const value = prompt.trim();
     if (!value) return;
-    router.push(`/advertisers?prompt=${encodeURIComponent(value)}`);
+    router.push(withLocale(`/advertisers?prompt=${encodeURIComponent(value)}`, locale));
   };
 
   return (

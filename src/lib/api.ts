@@ -2,7 +2,7 @@
 // Hai client tách riêng theo ranh giới đã chốt (Plan §6):
 //   - client nghiệp vụ: backend FastAPI + SQLite (gợi ý, số liệu, heatmap,
 //     Lead/Contact, đăng nhập Google, realtime SSE);
-//   - client nội dung: Strapi CMS (blog, case study, product, nội dung home).
+//   - client nội dung: Strapi CMS — xem src/lib/strapi.ts (blog, case study, product, nội dung home).
 // Không mock, không số liệu ghi cứng: backend chưa chạy hoặc kho rỗng thì
 // trả về trạng thái rỗng/lỗi rõ ràng.
 //
@@ -11,35 +11,27 @@
 // mất SSE thì polling lại mỗi 60 giây — không gọi dày hơn, không tự suy ra
 // số liệu từ delta.
 import type {
-  CaseStudy,
   ContactPayload,
   CoverageResponse,
-  LeadPayload,
+  LeadProfilePayload,
+  LeadSubmitPayload,
+  LeadSubmitResponse,
   NetworkStats,
+  NewsletterPayload,
+  OtpVerifyResponse,
   SuggestResponse,
 } from "./types";
 import { translate, type Locale } from "./i18n";
+import { ApiError } from "./errors";
+
+export { ApiError } from "./errors";
+export { fetchCaseStudies, isStrapiConfigured, STRAPI_BASE_URL } from "./strapi";
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "";
 
-export const STRAPI_BASE_URL =
-  process.env.NEXT_PUBLIC_STRAPI_URL?.replace(/\/$/, "") ?? "";
-
 export function isBackendConfigured(): boolean {
   return API_BASE_URL.length > 0;
-}
-
-export function isStrapiConfigured(): boolean {
-  return STRAPI_BASE_URL.length > 0;
-}
-
-export class ApiError extends Error {
-  status: number;
-  constructor(message: string, status: number) {
-    super(message);
-    this.status = status;
-  }
 }
 
 async function requestJson<T>(
@@ -60,7 +52,26 @@ async function requestJson<T>(
     throw new ApiError(translate(locale, "api.backendUnreachable"), 0);
   }
   if (!res.ok) {
-    throw new ApiError(translate(locale, "api.backendError", { status: String(res.status) }), res.status);
+    // Backend trả lỗi thống nhất {"error": {"code", "message"}} (+ details
+    // tùy endpoint, vd. OTP_WRONG kèm { attemptsLeft }) — giữ lại code để
+    // giao diện xử lý theo từng loại lỗi thay vì chỉ hiện chữ chung.
+    let code: string | undefined;
+    let details: unknown;
+    try {
+      const body = (await res.clone().json()) as {
+        error?: { code?: string; message?: string; details?: unknown };
+      };
+      code = body.error?.code;
+      details = body.error?.details;
+    } catch {
+      // Body không phải JSON thì dùng thông báo chung bên dưới.
+    }
+    throw new ApiError(
+      translate(locale, "api.backendError", { status: String(res.status) }),
+      res.status,
+      code,
+      details,
+    );
   }
   return (await res.json()) as T;
 }
@@ -96,66 +107,170 @@ export async function fetchSuggest(
   );
 }
 
-interface StrapiCaseStudyItem {
-  title?: string;
-  industry?: string;
-  metricLabel?: string;
-  metricValue?: number | null;
-  summary?: string;
-  cover?: { url?: string } | null;
-}
-
-interface StrapiListResponse<T> {
-  data?: T[];
-}
-
-// Case study nằm trong Strapi (Plan §6), không qua FastAPI. Chưa cấu hình
-// Strapi hoặc chưa có bài published thì trả danh sách rỗng — giao diện hiện
-// trạng thái rỗng, không tự điền số. Locale đi qua ?locale= để nội dung
-// Strapi đổi theo nút EN/VN (mặc định vi, khớp locale mặc định của Strapi).
-export async function fetchCaseStudies(locale: Locale = "vi"): Promise<CaseStudy[]> {
-  if (!isStrapiConfigured()) {
-    return [];
-  }
-  let res: Response;
-  try {
-    res = await fetch(`${STRAPI_BASE_URL}/api/case-studies?populate=cover&locale=${locale}`);
-  } catch {
-    throw new ApiError(translate(locale, "api.strapiUnreachable"), 0);
-  }
-  if (!res.ok) {
-    throw new ApiError(translate(locale, "api.strapiError", { status: String(res.status) }), res.status);
-  }
-  const body = (await res.json()) as StrapiListResponse<StrapiCaseStudyItem>;
-  return (body.data ?? []).map((item) => {
-    // Strapi v5 trả media dạng phẳng { url }; url tương đối thì ghép host Strapi.
-    const rawUrl = item.cover?.url ?? null;
-    const coverUrl =
-      rawUrl === null
-        ? null
-        : rawUrl.startsWith("http")
-          ? rawUrl
-          : `${STRAPI_BASE_URL}${rawUrl}`;
-    return {
-      title: item.title ?? "",
-      industry: item.industry ?? "",
-      metricLabel: item.metricLabel ?? "",
-      metricValue: item.metricValue ?? null,
-      summary: item.summary ?? null,
-      coverUrl,
-    };
-  });
-}
-
-export async function submitLead(payload: LeadPayload, locale: Locale = "vi"): Promise<void> {
-  await requestJson(
+// Lead form R1-2 (LEAD-01, BE 11-14): gửi lead → backend tạo OTP gửi qua
+// email (hiện giả lập — ghi log; email thật khi chốt nhà cung cấp, BE 13).
+// Trả về leadId để màn OTP xác thực tiếp; đừng dùng submitLead cũ nữa.
+export async function submitLeadV2(
+  payload: LeadSubmitPayload,
+  locale: Locale = "vi",
+): Promise<LeadSubmitResponse> {
+  return requestJson<LeadSubmitResponse>(
     "/api/leads",
+    { method: "POST", body: JSON.stringify(payload) },
+    locale,
+  );
+}
+
+export async function verifyLeadOtp(
+  leadId: number,
+  code: string,
+  locale: Locale = "vi",
+): Promise<OtpVerifyResponse> {
+  return requestJson<OtpVerifyResponse>(
+    `/api/leads/${leadId}/verify`,
+    { method: "POST", body: JSON.stringify({ code }) },
+    locale,
+  );
+}
+
+export async function resendLeadOtp(
+  leadId: number,
+  locale: Locale = "vi",
+): Promise<{ sent: boolean }> {
+  return requestJson<{ sent: boolean }>(
+    `/api/leads/${leadId}/resend`,
+    { method: "POST", body: "{}" },
+    locale,
+  );
+}
+
+// Bổ sung hồ sơ sau khi đã xác thực (FE 21): cần leadToken (cấp ở bước
+// verify) gửi kèm Authorization — backend kiểm tra token khớp leadId.
+export async function completeLeadProfile(
+  leadId: number,
+  leadToken: string,
+  payload: LeadProfilePayload,
+  locale: Locale = "vi",
+): Promise<void> {
+  await requestJson(
+    `/api/leads/${leadId}`,
     {
-      method: "POST",
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${leadToken}` },
       body: JSON.stringify(payload),
     },
     locale,
   );
+}
+
+// Đăng ký nhận tin ở footer (FE 18). BE 17 (double opt-in) ở R1-4 — hiện
+// chỉ lưu email + gửi xác nhận giả lập (ghi log), trả 202.
+export async function subscribeNewsletter(
+  payload: NewsletterPayload,
+  locale: Locale = "vi",
+): Promise<void> {
+  await requestJson(
+    "/api/newsletter",
+    { method: "POST", body: JSON.stringify(payload) },
+    locale,
+  );
+}
+
+// Đăng ký sự kiện (FE 36, BE 15): 201 { registrationId, registered,
+// duplicate } — đăng ký trùng email trong 24h trả duplicate=true, không lỗi.
+export async function registerEvent(
+  slug: string,
+  payload: { name: string; email: string; phone?: string; consent: boolean; locale: string },
+  locale: Locale = "vi",
+): Promise<{ registrationId: number; registered: boolean; duplicate: boolean }> {
+  return requestJson<{ registrationId: number; registered: boolean; duplicate: boolean }>(
+    `/api/events/${encodeURIComponent(slug)}/register`,
+    { method: "POST", body: JSON.stringify(payload) },
+    locale,
+  );
+}
+
+// Nộp CV (FE 43, BE 16): multipart (file PDF/DOCX ≤ 5 MB) — không dùng
+// requestJson vì nó ép Content-Type JSON; lỗi BE trả theo format chung
+// {"error": {"code", "message"}} nên parse thủ công ở đây.
+export async function applyJob(
+  slug: string,
+  formData: FormData,
+  locale: Locale = "vi",
+): Promise<{ applicationId: number; received: boolean }> {
+  if (!isBackendConfigured()) {
+    throw new ApiError(translate(locale, "api.noBackendConfig"), 0);
+  }
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/api/jobs/${encodeURIComponent(slug)}/apply`, {
+      method: "POST",
+      body: formData,
+    });
+  } catch {
+    throw new ApiError(translate(locale, "api.backendUnreachable"), 0);
+  }
+  if (!res.ok) {
+    let code: string | undefined;
+    let message: string | undefined;
+    try {
+      const body = (await res.json()) as { error?: { code?: string; message?: string } };
+      code = body.error?.code;
+      message = body.error?.message;
+    } catch {
+      // Body không phải JSON — giữ message mặc định theo status.
+    }
+    throw new ApiError(message ?? translate(locale, "api.backendUnreachable"), res.status, code);
+  }
+  return (await res.json()) as { applicationId: number; received: boolean };
+}
+
+// Xác nhận newsletter (FE 41, BE 17): token dùng 1 lần, hết hạn sau 7 ngày.
+export async function confirmNewsletter(
+  token: string,
+  locale: Locale = "vi",
+): Promise<{ subscribed: boolean; confirmed: boolean }> {
+  return requestJson<{ subscribed: boolean; confirmed: boolean }>(
+    `/api/newsletter/confirm?token=${encodeURIComponent(token)}`,
+    { method: "GET" },
+    locale,
+  );
+}
+
+// Tìm kiếm nội dung (FE 45-47, BE 18-20): GET /api/search của FastAPI —
+// đọc Strapi live (cache 5 phút), khớp không dấu, trả facet đếm theo loại.
+// BE trả url không tiền tố locale (/products/...) — trang gọi tự gắn locale.
+export interface SearchResultItem {
+  type: string;
+  slug: string;
+  title: string;
+  summary: string;
+  url: string;
+  locale: string;
+  market: string;
+  date: string | null;
+}
+
+export interface SearchResponse {
+  results: SearchResultItem[];
+  facets: Record<string, number>;
+  total: number;
+  page: number;
+  pageSize: number;
+  source: string;
+}
+
+export async function searchContent(
+  q: string,
+  opts: { locale?: string; type?: string; page?: number; pageSize?: number } = {},
+  locale: Locale = "vi",
+): Promise<SearchResponse> {
+  const params = new URLSearchParams({ q });
+  if (opts.locale) params.set("locale", opts.locale);
+  if (opts.type) params.set("type", opts.type);
+  if (opts.page) params.set("page", String(opts.page));
+  if (opts.pageSize) params.set("pageSize", String(opts.pageSize));
+  return requestJson<SearchResponse>(`/api/search?${params.toString()}`, { method: "GET" }, locale);
 }
 
 export async function submitContact(payload: ContactPayload, locale: Locale = "vi"): Promise<void> {

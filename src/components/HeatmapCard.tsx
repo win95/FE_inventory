@@ -1,7 +1,7 @@
 // Thẻ bản đồ nhiệt Location Network (F04), theo đúng markup trang mẫu
 // Figma (file HTML tran gửi, 18/11/2026 — view Location Network):
 // thẻ trắng bo 16px p-8; tiêu đề + ghi chú + nút Drill deeper (khóa);
-// lưới 10 cột, mỗi ô 26px, màu đỏ #E8212B với độ đậm theo mức 1-5
+// lưới 10 cột, mỗi ô 26px, màu đỏ #d2232a với độ đậm theo mức 1-5
 // (0.2 / 0.4 / 0.62 / 0.82 / 1), ô trống trắng mờ 0.04, hover phóng 1.25x,
 // tooltip "Tên: Engagement Level N"; cột phải w-56: thang Engagement Level
 // (Emerging/Active/Strong/High/Flagship) + Flagship Markets (mức >= 4).
@@ -172,7 +172,7 @@ export default function HeatmapCard({
                   style={{
                     width: 26,
                     height: 26,
-                    backgroundColor: "rgb(232, 33, 43)",
+                    backgroundColor: "rgb(210, 35, 42)",
                     opacity: LEVEL_OPACITY[level],
                     cursor: "pointer",
                   }}
@@ -194,7 +194,7 @@ export default function HeatmapCard({
                   style={{
                     width: 16,
                     height: 16,
-                    backgroundColor: "rgb(232, 33, 43)",
+                    backgroundColor: "rgb(210, 35, 42)",
                     opacity: row.opacity,
                   }}
                 />

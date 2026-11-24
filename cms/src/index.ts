@@ -12,6 +12,26 @@ const PUBLIC_ACTIONS = [
   'api::product.product.findOne',
   'api::home.home.find',
   'api::home.home.findOne',
+  // BE 2-4 (R1-1): các loại nội dung mới — Frontend chỉ đọc bản published.
+  'api::solution.solution.find',
+  'api::solution.solution.findOne',
+  'api::ad-format.ad-format.find',
+  'api::ad-format.ad-format.findOne',
+  'api::resource.resource.find',
+  'api::resource.resource.findOne',
+  'api::event.event.find',
+  'api::event.event.findOne',
+  'api::job.job.find',
+  'api::job.job.findOne',
+  'api::partner.partner.find',
+  'api::partner.partner.findOne',
+  'api::customer.customer.find',
+  'api::customer.customer.findOne',
+  'api::faq.faq.find',
+  'api::faq.faq.findOne',
+  // Single type chỉ có find (không có findOne).
+  'api::data-snapshot.data-snapshot.find',
+  'api::global.global.find',
 ];
 
 const WEBHOOK_EVENTS = ['entry.publish', 'entry.unpublish', 'entry.update'];

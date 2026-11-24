@@ -1,0 +1,100 @@
+{
+  "attributes": {
+    "description": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "type": "text"
+    },
+    "durationSeconds": {
+      "type": "integer"
+    },
+    "market": {
+      "default": "vn",
+      "enum": [
+        "vn",
+        "global",
+        "id",
+        "th"
+      ],
+      "type": "enumeration"
+    },
+    "metricLabel": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "type": "string"
+    },
+    "metricValue": {
+      "type": "decimal"
+    },
+    "name": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "required": true,
+      "type": "string"
+    },
+    "seo": {
+      "component": "shared.seo",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "repeatable": false,
+      "type": "component"
+    },
+    "slug": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "required": true,
+      "targetField": "name",
+      "type": "uid"
+    },
+    "solution": {
+      "relation": "manyToOne",
+      "target": "api::solution.solution",
+      "type": "relation"
+    },
+    "formatType": {
+      "type": "enumeration",
+      "enum": [
+        "video",
+        "banner",
+        "text"
+      ],
+      "default": "video",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    }
+  },
+  "collectionName": "ad_formats",
+  "info": {
+    "description": "Định dạng quảng cáo (Bumper, Banner, TVC, Interactive Card) — catalogue PROD-04. Khác ad_formats nghiệp vụ trong SQLite của FastAPI (số liệu realtime); đây là nội dung mô tả.",
+    "displayName": "ad-format",
+    "pluralName": "ad-formats",
+    "singularName": "ad-format"
+  },
+  "kind": "collectionType",
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  }
+}
