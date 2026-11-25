@@ -39,7 +39,10 @@ bằng giải pháp và công nghệ nào.** Chi tiết kỹ thuật đầy đ�
 
 ## 2. Đã làm gì
 
-### 2.1. R1-1 — Nền tảng (FE 1–14, BE 1–10)
+Mã chức năng trong ngoặc (vd. `HOME-01`) là mã trong Docs 2.0 §5 (§3 cho
+FIX) và §6.5; bảng đối chiếu đầy đủ ở Phụ lục A.
+
+### 2.1. R1-1 — Nền tảng (FE 1–14, BE 1–10; FIX-01–05)
 
 | Hạng mục | Nội dung |
 |---|---|
@@ -60,7 +63,7 @@ bằng giải pháp và công nghệ nào.** Chi tiết kỹ thuật đầy đ�
 | Header + mega menu (FE 15–17) | IA theo Docs §4.1: Products (mega menu 6 cột theo màu sản phẩm, tên + slogan + solutions), dropdown Data / Insights & Resources / Company (đóng bằng Escape + bấm ngoài); toolbar Search, Sign in, EN/VI, nút đỏ Get data; mobile Drawer + thanh CTA cố định; `SiteChrome` gom trạng thái |
 | Search overlay vỏ tĩnh (FE 16) | Lọc ngay trong danh mục tĩnh (6 sản phẩm, 26 solution, 4 trang) — khớp không dấu, cả từ khóa vi/en; search thật qua API ở R1-5 |
 | Footer 5 cột (FE 18) | Thương hiệu + mạng xã hội (URL thật chưa chốt — SOC-01) \| Sản phẩm \| Dữ liệu & Tài nguyên \| Công ty + Hỗ trợ \| Liên hệ + form nhận tin (`POST /api/newsletter`); vẫn ẩn trên /advertisers |
-| Lead form 3 bước (FE 19–21) | Bắt buộc họ tên/công ty/email/SĐT (E.164 — gõ 0xxx tự đổi +84), tùy chọn ngành/thương hiệu/khu vực/ghi chú; consent tách 2 mục đích; UTM + source ẩn; bước 1 nhập thông tin → bước 2 OTP 6 số → bước 3 bổ sung hồ sơ (PATCH kèm lead token); Turnstile thật khi có site key, chưa có thì "mô phỏng" |
+| Lead form 3 bước (FE 19–21, LEAD-01) | Bắt buộc họ tên/công ty/email/SĐT (E.164 — gõ 0xxx tự đổi +84), tùy chọn ngành/thương hiệu/khu vực/ghi chú; consent tách 2 mục đích; UTM + source ẩn; bước 1 nhập thông tin → bước 2 OTP 6 số → bước 3 bổ sung hồ sơ (PATCH kèm lead token); Turnstile thật khi có site key, chưa có thì "mô phỏng" |
 | BE leads + OTP (BE 11–14) | `POST /api/leads` (validate E.164, chống trùng email chưa xác thực 10 phút, rate limit 5/phút); `/verify` (OTP hash SHA-256, TTL 10 phút, tối đa 5 sai, cấp JWT lead 60 phút — **chỉ lead đã xác thực mới vào hàng đợi CRM**); `/resend` (cooldown 60s, tối đa 5 mã/ngày); `PATCH /api/leads/{id}`; `POST /api/newsletter` (202); worker CRM trong tiến trình, chạy mỗi 30s |
 
 ### 2.3. Dữ liệu giả toàn bộ + API BE mới (BE 7, 8, 15–20, 9/10/21–24)
@@ -69,13 +72,13 @@ bằng giải pháp và công nghệ nào.** Chi tiết kỹ thuật đầy đ�
 |---|---|
 | Seed Strapi (BE 7) | `cms/scripts/seed-fake-content.js` (`npm run seed`, `--force` để tạo lại): 6 Product + 26 Solution + 4 AdFormat + 12 Resource + 6 Event + 118 Article + 6 Job + 8 Partner + 6 Customer + 3 CaseStudy + 12 FAQ + DataSnapshot + Global + Home — vi + en, đã publish; Partner/Customer có cờ `consent` (chỉ hiện logo khi đồng ý) |
 | Webhook → revalidate (BE 8) | FastAPI nhận webhook Strapi rồi gọi `POST /api/revalidate` của Frontend, xóa tag `strapi:<collection>`; lỗi revalidate chỉ ghi log, webhook vẫn trả 200 |
-| Đăng ký sự kiện (BE 15) | `POST /api/events/{slug}/register` (201; trùng email + sự kiện trong 24h → `duplicate: true`); email xác nhận kèm file .ics; đẩy CRM qua `crm_outbox` |
-| Nộp CV (BE 16) | `POST /api/jobs/{slug}/apply` (multipart PDF/DOCX ≤ 5 MB, kiểm tra magic bytes; quét virus giả lập; lưu `uploads/cv/<uuid>.ext`; đẩy HR qua `crm_outbox`) |
+| Đăng ký sự kiện (BE 15, EVT-02) | `POST /api/events/{slug}/register` (201; trùng email + sự kiện trong 24h → `duplicate: true`); email xác nhận kèm file .ics; đẩy CRM qua `crm_outbox` |
+| Nộp CV (BE 16, JOB-02) | `POST /api/jobs/{slug}/apply` (multipart PDF/DOCX ≤ 5 MB, kiểm tra magic bytes; quét virus giả lập; lưu `uploads/cv/<uuid>.ext`; đẩy HR qua `crm_outbox`) |
 | Newsletter double opt-in (BE 17) | `POST /api/newsletter` lưu pending + gửi link xác nhận (token chỉ lưu dạng hash, hết hạn 7 ngày); `GET /api/newsletter/confirm` dùng 1 lần |
-| Tìm kiếm (BE 18–20) | `GET /api/search` — **không Meilisearch**: đọc nội dung công khai từ Strapi (cache 5 phút), khớp không dấu, lọc locale/market/type, đếm facet; Strapi không tới được thì dùng chỉ mục dự phòng (6 sản phẩm + 26 solution tĩnh trong code) |
+| Tìm kiếm (BE 18–20, SRCH-01–03) | `GET /api/search` — **không Meilisearch**: đọc nội dung công khai từ Strapi (cache 5 phút), khớp không dấu, lọc locale/market/type, đếm facet; Strapi không tới được thì dùng chỉ mục dự phòng (6 sản phẩm + 26 solution tĩnh trong code) |
 | Hạ tầng (BE 9/10/21–24) | Media R1 dùng upload local Strapi + `next/image` AVIF/WebP; object storage/CDN, IP/VPN, role Editor/Author, CI/CD, Sentry, backup — ghi rõ cách làm trong `cms/README.md` và README của BE_inventory, không dựng hạ tầng thật trong R1 |
 
-### 2.4. R1-3 — Home mới + Products/Solutions/AdFormats (FE 22–32)
+### 2.4. R1-3 — Home mới + Products/Solutions/AdFormats (FE 22–32; HOME-01–06, PROD-01–05)
 
 - **Home mới** (`src/app/[locale]/page.tsx`, server): hero từ Home single +
   tab 6 sản phẩm (màu/CTA đổi theo tab), 6 thẻ sản phẩm, HowItWorks từ CMS,
@@ -101,7 +104,7 @@ bằng giải pháp và công nghệ nào.** Chi tiết kỹ thuật đầy đ�
   bắt buộc, lazy, AVIF/WebP); dialog lead mở từ mọi client component qua
   `LeadContext`.
 
-### 2.5. R1-4 — Resources, Events, News, Company, Jobs, FAQ (FE 33–44)
+### 2.5. R1-4 — Resources, Events, News, Company, Jobs, FAQ (FE 33–44; RES-01, EVT-01/02, NEWS-01, COMP-01–03, JOB-01/02)
 
 - **Trang mới:** /resources (lọc loại/ngành/năm qua URL, phân trang 6) +
   /resources/[slug]; /events (tab Sắp diễn ra/Đã diễn ra, lọc hình thức) +
@@ -126,7 +129,7 @@ bằng giải pháp và công nghệ nào.** Chi tiết kỹ thuật đầy đ�
 - **Footer:** đã bật link tới mọi trang mới — chỉ còn Data (R2) và mạng xã
   hội (SOC-01) vẫn mờ.
 
-### 2.6. R1-5 — Search + Social/OG + Contact + E2E + Responsive + Web Vitals (FE 45–53)
+### 2.6. R1-5 — Search + Social/OG + Contact + E2E + Responsive + Web Vitals (FE 45–53; SRCH-01–03, SOC-01/02, CONT-01)
 
 - **Tìm kiếm thật (FE 45–47):** `SearchOverlay` gọi `GET /api/search` của
   FastAPI (debounce 200 ms, chống phản hồi cũ đè mới bằng số thứ tự
@@ -204,6 +207,8 @@ trong `node_modules/next/dist/docs/` trước khi viết code).
 | 3.1.6 | `params` / `searchParams` là Promise | Async request APIs trong Next 16 | `await` params/searchParams trước khi dùng (mọi page động) | Build + E2E pass |
 | 3.1.7 | Layout đọc Global (fetch `strapi:global` không cache) làm build lỗi prerender ở trang tĩnh /advertisers | Fetch không cache trong layout tĩnh | `strapiSingle` thêm tham số `cache`; `fetchGlobal` dùng `cache: "force-cache"` (revalidate bằng tag khi Strapi publish, BE 8); trang động vẫn đọc mới mỗi request | Build pass (R1-5) |
 | 3.1.8 | Sau mỗi `npm run build`, file tĩnh thiếu trong `.next/standalone` | Next 16 standalone: `npm run build` xóa `.next/standalone/.next/static/` | Copy `.next/static` + `public` vào standalone **sau mỗi lần build**, kill server cũ trước (Dockerfile đã xử lý cả hai) | Server standalone chạy đúng sau build |
+
+| 3.1.9 | Theme sản phẩm đặt trong `ProductCard` (client component) nên trang server chỉ thấy client reference stub (undefined) → /products và trang chi tiết crash "Cannot read properties of undefined (reading 'bar')" | Theme phải dùng được ở cả server component | Chuyển `PRODUCT_THEME` + `ProductColor` sang module thuần `src/lib/product-theme.ts` (không `"use client"`) | /products + chi tiết product render đủ, không crash (R1-3, 33/33) |
 
 ### 3.2. Strapi 5 — data layer và seed
 
@@ -357,3 +362,77 @@ trong `node_modules/next/dist/docs/` trước khi viết code).
   BE 27–44), R3, R4
 - `cms/README.md` — Strapi content model, bootstrap, webhook, MCP
 - README của `BE_inventory` — API FastAPI, fake providers, CRM outbox
+
+## Phụ lục A — Mã chức năng Docs 2.0 ↔ R1
+
+Mã chức năng lấy từ `Docs/Docs_AWING_Website2.0.md`: §3 (FIX — lỗi của site
+cũ), §5 (yêu cầu chức năng), §6.5 (Data/Lead/Account). Trạng thái: ✅ Xong |
+◐ Xong một phần | ⏳ Chưa làm (đợt sau). Bảng này đồng bộ với §7 của bản cập
+nhật kế hoạch R1 và §7 của kế hoạch R2 — dùng mã này khi nói chuyện về sau
+thay vì diễn giải lại tên tính năng.
+
+### A.1. FIX — lỗi site cũ (§3 Docs 2.0)
+
+| Mã | Vấn đề | Trạng thái | Ghi chú |
+|---|---|---|---|
+| FIX-01 | robots/sitemap trỏ staging `awing-website-v2.lotusa.net` | ✅ | `SITE_URL=https://awing.vn`; sitemap/robots động (R1-1 FE 6; sitemap động ở M7) |
+| FIX-02 | Canonical mọi trang trỏ về home | ✅ | Canonical tự trỏ từng trang (B2 sửa /advertisers + /locations) |
+| FIX-03 | /vi khai báo `lang="en"`, title sai | ◐ | Metadata theo locale xong; lang SSR vẫn là `vi` (đổi bằng JS khi hydrate) — cần đưa `[locale]` lên làm layout gốc |
+| FIX-04 | Không có hreflang | ✅ | hreflang vi/en/x-default |
+| FIX-05 | Trang chủ 4 H1; không JSON-LD; 8 ảnh thiếu alt | ✅ | 1 H1/trang; JSON-LD Organization + WebSite; `CmsImage` bắt buộc alt |
+| FIX-06 | Trang chủ ~3,6 MB / 79 request, load ~4,4 giây | ◐ | JS 194KB transfer, LCP 557ms (đo local); chưa đo lại bằng Lighthouse |
+| FIX-07 | "Latest From AWING" kẹt ở "Loading..." | ✅ | Showcase render phía server (HOME-05) |
+| FIX-08 | /search, /events, /resources trả 404 | ✅ | Xây mới ở R1-3/4/5 |
+
+### A.2. Home, Products, Resources, Events, News, Company, Jobs, Search (§5 Docs 2.0)
+
+| Mã | Yêu cầu | Trạng thái | Ghi chú |
+|---|---|---|---|
+| HOME-01 | Hero định vị mới + 6 sản phẩm (carousel/tab) | ✅ | Tab 6 sản phẩm; LCP 557ms < 2,5s |
+| HOME-02 | 6 thẻ sản phẩm dạng infographic | ✅ | Mỗi thẻ có nhãn mục tiêu, tên, slogan, link chi tiết |
+| HOME-03 | Ảnh minh hoạ mới (ảnh thật, qua CMS, alt, AVIF/WebP) | ◐ | Qua CMS + alt + AVIF/WebP xong; ảnh thật vẫn chờ quyết định §10 |
+| HOME-04 | Dải snapshot dữ liệu | ◐ | R1 dùng số CMS (DataSnapshot); R2 chuyển sang Data API |
+| HOME-05 | Showcase News/Resources/Events mới nhất | ✅ | 2+2+2, render server, tự cập nhật khi publish |
+| HOME-06 | CTA "Get data" / "Talk to us" | ✅ | Mở lead form kèm source (trang, khối) |
+| PROD-01 | Trang danh sách 6 sản phẩm | ✅ | Thứ tự, màu, nội dung quản lý trong CMS |
+| PROD-02 | Trang chi tiết sản phẩm (Hero → Opportunity → Solutions → How to plan → Showcase → Lead form) | ✅ | Marketing tự ghép khối trong CMS, không cần dev |
+| PROD-03 | Trang chi tiết Solution | ✅ | Breadcrumb, Solution cùng sản phẩm, case study liên quan |
+| PROD-04 | Catalogue định dạng quảng cáo trong Solution "Interactive Ad Experiences" | ✅ | Mô phỏng trên khung điện thoại + bảng thông số |
+| PROD-05 | Theme theo sản phẩm | ✅ | Trang tự đổi màu theo `data-product`; theme đặt trong ProductCard (client) từng làm trang server crash — đã chuyển `PRODUCT_THEME` sang module thuần `src/lib/product-theme.ts` (§3.1.9) |
+| RES-01 | Hub tài liệu lọc theo loại/ngành/sản phẩm/năm | ◐ | Lọc loại/ngành/năm + phân trang xong; lọc theo sản phẩm chưa có (schema Resource thiếu relation product) |
+| RES-02 | Trang Report kể chuyện (infographic tương tác) | ⏳ R3 | FE 72 |
+| RES-03 | Tải báo cáo theo ngành/khu vực, yêu cầu lead form | ⏳ R2 | FE 64/65 + BE 37 (R2-3) |
+| RES-04 | Kho báo cáo các năm trước | ⏳ R3 | FE 74 + BE 46 |
+| RES-05 | Tóm tắt audio/AI cho mỗi báo cáo | ⏳ R3+ | FE 75 + BE 47, tuỳ chọn |
+| EVT-01 | Danh sách sự kiện sắp tới / đã qua | ✅ | Lọc thời gian, hình thức, thị trường |
+| EVT-02 | Chi tiết sự kiện: đăng ký, .ics, bản đồ | ◐ | Đăng ký + .ics + schema Event xong; slide/video sự kiện đã qua chưa có (seed không có) |
+| NEWS-01 | Giữ 118 bài tin, tag, bộ lọc, bài liên quan | ◐ | 118 bài + lọc + liên quan + NewsArticle xong; 301 đầy đủ chưa có (bảng 572 URL chờ BA; `redirects.json` mới 2 dòng) |
+| COMP-01 | About: định vị, lịch sử, đội ngũ, văn phòng VN/ID | ◐ | Định vị + số liệu + văn phòng xong; timeline/team chưa có (không có dữ liệu CMS) |
+| COMP-02 | Partners (chỉ logo đã đồng ý) | ✅ | Cờ `consent` trong CMS |
+| COMP-03 | Customers: logo wall, testimonial, link case study | ✅ | Như COMP-02 |
+| JOB-01 | Danh sách việc làm lọc phòng ban/địa điểm | ✅ | Tin hết hạn tự ẩn |
+| JOB-02 | Chi tiết + nộp CV online (PDF/DOCX ≤ 5 MB) | ✅ | Checkbox đồng ý, quét virus giả lập, schema JobPosting |
+| SRCH-01 | Ô tìm kiếm chung, gợi ý khi gõ | ◐ | Gợi ý qua API + khớp không dấu xong; debounce 200ms, chưa đo latency gợi ý đầu-cuối (< 200ms) |
+| SRCH-02 | Trang kết quả có tab (Tất cả, Products, Data, Resources, Events, News, Careers) | ◐ | Tab + đếm xong, trừ tab Data (R2 — BE chưa index dữ liệu) |
+| SRCH-03 | Tìm theo ngôn ngữ đang xem, tuỳ chọn mọi ngôn ngữ | ✅ | Locale mặc định đúng; có lựa chọn "Tất cả ngôn ngữ" |
+| SOC-01 | Link mạng xã hội (Facebook, LinkedIn, YouTube, Zalo OA, TikTok) | ◐ | Ở footer + Contact xong; URL là giá trị seed, URL thật chưa chốt |
+| SOC-02 | Nút chia sẻ, ảnh OG riêng từng trang | ✅ | ShareButtons + OG tự sinh theo locale |
+| CONT-01 | Trang Contact (lead form, văn phòng, bản đồ) | ✅ | Dùng chung component lead form |
+
+### A.3. Data, Lead, Account (§6.5 Docs 2.0)
+
+| Mã | Yêu cầu | Trạng thái | Ghi chú |
+|---|---|---|---|
+| DATA-01 | Trang Overview (thẻ số liệu, biểu đồ, bảng tỉnh/thành, loại địa điểm) | ⏳ R2 | FE 55 (R2-2) |
+| DATA-02 | Bộ lọc chung lưu trên URL | ⏳ R2 | FE 56 (R2-2) |
+| DATA-03 | Chia sẻ, nhúng iframe, tải PNG/CSV từng biểu đồ | ⏳ R2 | FE 57 (R2-2) |
+| DATA-04 | Explorer (chọn chỉ số, chiều breakdown, kiểu biểu đồ) | ⏳ R2 | FE 58 (R2-2) |
+| DATA-05 | Heatmap (ô lục giác H3, bong bóng/mật độ) | ⏳ R2 | FE 59 (R2-2) |
+| DATA-06 | Trang Methodology | ⏳ R2 | FE 60 (R2-2) |
+| LEAD-01 | Lead form dùng chung, xác thực OTP, chống spam (Turnstile) | ✅ | Form 3 bước + OTP 6 số + Turnstile mô phỏng; lead vào CRM < 1 phút (giả lập) |
+| LEAD-02 | Mở khoá theo ma trận §6.3 | ⏳ R2 | FE 63 + BE 36 (R2-3); chặn bởi D-R2-01 |
+| LEAD-03 | Gửi file dữ liệu qua email (xử lý nền) | ⏳ R2 | BE 37 + FE 64/65 (R2-3); file < 5 phút, link hết hạn 7 ngày |
+| ACC-01 | Đăng ký từ lead form, chỉ 1 bước | ⏳ R2 | FE 66 (R2-3) |
+| ACC-02 | Trang tài khoản (view đã lưu, lịch sử, tài liệu đã xem, hồ sơ) | ⏳ R2 | FE 69 (R2-3) |
+| ACC-03 | Sign in 2 lựa chọn (khách AWING → ACM/AAP; tài khoản website) | ⏳ R2 | FE 67 (R2-3) |
+| ACC-04 | Đăng nhập một lần (SSO) với ACM/AAP; gộp tài khoản trùng email | ⏳ R4 | FE 78 + BE 50; cần ACM/AAP hỗ trợ OIDC |
