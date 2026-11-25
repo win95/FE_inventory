@@ -163,7 +163,9 @@ export default function ComponentsDocsPage() {
             value={tab}
             onChange={setTab}
           />
-          <p className="mt-2 text-sm text-muted">Tab: {tab}</p>
+          <div role="tabpanel" id={`tabpanel-${tab}`} aria-labelledby={`tab-${tab}`}>
+            <p className="mt-2 text-sm text-muted">Tab: {tab}</p>
+          </div>
         </div>
         <div>
           <p className="mb-2 text-sm font-semibold text-ink">Pagination</p>

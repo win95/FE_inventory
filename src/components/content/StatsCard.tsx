@@ -1,6 +1,5 @@
 // Thẻ số liệu (FE 8) — nhãn + giá trị lớn + xu hướng (tăng/giảm, tốt/xấu).
-"use client";
-
+// Server component (không hook, không handler) để bớt JS client.
 import type { ReactNode } from "react";
 
 export interface StatsCardProps {

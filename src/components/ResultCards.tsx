@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { AdFormat, CaseStudy } from "@/lib/types";
 import { useLocale } from "./LocaleProvider";
 import { withLocale } from "@/lib/i18n";
+import CmsImage from "./CmsImage";
 
 
 // Thẻ hiển thị cho trang kết quả Advertisers, theo đúng bố cục trang mẫu
@@ -36,6 +37,9 @@ export function AdFormatCard({
   const { locale, t } = useLocale();
   return (
     <article className="rounded-2xl border border-border bg-white p-3">
+      {/* Vùng xem trước là nút mở modal — không lồng Link bên trong (link
+          trong button là interactive lồng interactive). Nút "Tìm hiểu ngay"
+          đặt dưới thân thẻ, ngoài vùng bấm mở modal. */}
       <div
         role="button"
         tabIndex={0}
@@ -58,13 +62,6 @@ export function AdFormatCard({
           <PlayIcon />
           {t("adv.play")}
         </span>
-        <Link
-          href={withLocale("/contact", locale)}
-          onClick={(event) => event.stopPropagation()}
-          className="absolute inset-x-3 bottom-3 rounded-lg bg-brand py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
-        >
-          {t("adv.learnNow")}
-        </Link>
       </div>
       <div className="px-1 pb-1 pt-3">
         <h3 className="font-semibold text-ink">{format.name}</h3>
@@ -77,6 +74,12 @@ export function AdFormatCard({
             {format.metricValue === null ? "—" : `${format.metricValue}%`}
           </span>
         </div>
+        <Link
+          href={withLocale("/contact", locale)}
+          className="mt-3 block rounded-lg bg-brand py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
+        >
+          {t("adv.learnNow")}
+        </Link>
       </div>
     </article>
   );
@@ -108,8 +111,9 @@ export function CaseStudyCard({
     >
       <div className="relative h-36">
         {study.coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={study.coverUrl} alt="" className="h-full w-full object-cover" />
+          // Ảnh CMS qua next/image (CmsImage): trình duyệt lấy ảnh qua
+          // /_next/image của Next.js, không gọi thẳng Strapi.
+          <CmsImage src={study.coverUrl} alt={study.title} className="h-full w-full object-cover" />
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-brand/25 via-tile to-surface" />
         )}

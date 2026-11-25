@@ -47,7 +47,12 @@ export default function HomeHero({
               onChange={setActive}
               ariaLabel={t("nav.products")}
             />
-            <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-white">
+            <div
+              role="tabpanel"
+              id={`tabpanel-${product.slug}`}
+              aria-labelledby={`tab-${product.slug}`}
+              className="mt-6 overflow-hidden rounded-2xl border border-border bg-white"
+            >
               <div className={`h-1.5 ${PRODUCT_THEME[product.color].bar}`} aria-hidden="true" />
               <div className="p-6 sm:p-8">
                 <p className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${PRODUCT_THEME[product.color].badge}`}>

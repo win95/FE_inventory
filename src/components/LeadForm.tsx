@@ -16,9 +16,7 @@
 import { useEffect, useState } from "react";
 import {
   ApiError,
-  API_BASE_URL,
   completeLeadProfile,
-  isBackendConfigured,
   resendLeadOtp,
   submitLeadV2,
   verifyLeadOtp,
@@ -123,7 +121,7 @@ export default function LeadForm({ mode = "embedded", source = "home", onDone }:
     event.preventDefault();
     const normalizedPhone = normalizePhone(phone);
     if (!name.trim() || !company.trim()) {
-      setFieldError(t("common.sendFailed"));
+      setFieldError(t("lead.nameCompanyRequired"));
       return;
     }
     if (!EMAIL_RE.test(email.trim())) {
@@ -267,7 +265,7 @@ export default function LeadForm({ mode = "embedded", source = "home", onDone }:
       <div className="grid gap-4 sm:grid-cols-2">
         <Input
           id={`${idp}email`}
-          label="Email *"
+          label={t("form.email")}
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -537,14 +535,15 @@ export default function LeadForm({ mode = "embedded", source = "home", onDone }:
         </form>
       ) : (
         <div className="flex flex-wrap items-center gap-3">
-          {isBackendConfigured() && (
-            <a
-              href={`${API_BASE_URL}/api/auth/google`}
-              className="rounded-lg border border-border px-4 py-2.5 text-sm text-muted hover:text-ink"
-            >
-              {t("auth.signInGoogle")}
-            </a>
-          )}
+          {/* OAuth phải là điều hướng đầy đủ của trình duyệt (không prefetch,
+              không client-side routing): <Link> sẽ prefetch URL đăng nhập. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a
+            href="/api/backend/api/auth/google"
+            className="rounded-lg border border-border px-4 py-2.5 text-sm text-muted hover:text-ink"
+          >
+            {t("auth.signInGoogle")}
+          </a>
           {mode === "popup" && onDone && (
             <button
               type="button"

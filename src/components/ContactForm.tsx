@@ -71,7 +71,7 @@ export default function ContactForm() {
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="contact-email" className="text-sm font-medium text-ink">Email *</label>
+          <label htmlFor="contact-email" className="text-sm font-medium text-ink">{t("form.email")}</label>
           <input id="contact-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
             className="mt-1 h-11 w-full rounded-lg border border-outline bg-white px-3 text-ink outline-none focus:border-brand" />
         </div>

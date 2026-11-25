@@ -22,9 +22,9 @@ export default function ContactInfo() {
         <span className="font-medium text-ink">Indonesia: </span>
         AIA Central Tower 25th Floor, Jl. Jenderal Sudirman Kav. 48A, Jakarta
       </li>
-      <li>{t("contact.ads")}+84 901 0505 17</li>
-      <li>{t("contact.network")}+84 979 931 193</li>
-      <li>{t("contact.support")}+84 973 0505 17</li>
+      <li>{t("contact.ads")}<a href="tel:+84901050517" className="font-medium text-ink hover:text-brand">+84 901 0505 17</a></li>
+      <li>{t("contact.network")}<a href="tel:+84979931193" className="font-medium text-ink hover:text-brand">+84 979 931 193</a></li>
+      <li>{t("contact.support")}<a href="tel:+84973050517" className="font-medium text-ink hover:text-brand">+84 973 0505 17</a></li>
       <li>
         Email:{" "}
         <a href="mailto:contact@awing.vn" className="font-medium text-ink hover:text-brand">

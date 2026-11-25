@@ -1,10 +1,11 @@
 // Xác nhận đăng ký nhận tin (R1-4, FE 41 — đích của link trong email xác
-// nhận của BE 17). Trang server gọi thẳng BE bằng token trong URL (?token=):
+// nhận của BE 17). Trang server gọi BE qua lib/api (phía server gọi thẳng
+// BACKEND_URL) bằng token trong URL (?token=):
 // token đúng → đã xác nhận; token sai/hết hạn/dùng rồi → BE trả 400 và
 // trang hiện hướng dẫn đăng ký lại. Token không lộ ra client.
 import type { Metadata } from "next";
 import { connection } from "next/server";
-import { API_BASE_URL } from "@/lib/api";
+import { confirmNewsletter } from "@/lib/api";
 import { translate, type Locale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/seo";
 
@@ -14,7 +15,19 @@ export const instant = false;
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
   const { locale } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  return pageMetadata({ locale: loc, path: "/newsletter/confirm", title: `${translate(loc, "newsconfirm.title")} — AWING`, description: "" });
+  // Trang xác nhận bằng token trong URL — không cho crawler index.
+  return {
+    ...pageMetadata({
+      locale: loc,
+      path: "/newsletter/confirm",
+      title: `${translate(loc, "newsconfirm.title")} — AWING`,
+      description:
+        loc === "en"
+          ? "Confirm your AWING newsletter subscription."
+          : "Xác nhận đăng ký nhận tin AWING.",
+    }),
+    robots: { index: false, follow: false },
+  };
 }
 
 export default async function NewsletterConfirmPage({
@@ -33,8 +46,8 @@ export default async function NewsletterConfirmPage({
   let state: "done" | "error" | "noToken" = "noToken";
   if (token) {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/newsletter/confirm?token=${encodeURIComponent(token)}`, { cache: "no-store" });
-      state = res.ok ? "done" : "error";
+      const result = await confirmNewsletter(token, loc);
+      state = result.confirmed ? "done" : "error";
     } catch {
       state = "error";
     }

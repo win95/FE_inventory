@@ -64,7 +64,7 @@ export default function AdFormatCatalog({ formats }: { formats: (CmsAdFormat & {
                   </span>
                   <span className="mt-1 block text-sm text-muted">{f.description}</span>
                   <span className="mt-2 block text-sm text-muted">
-                    {f.metricLabel}: <strong className="text-ink">{f.metricValue ?? "—"}%</strong>
+                    {f.metricLabel}: <strong className="text-ink">{f.metricValue === null ? "—" : `${f.metricValue}%`}</strong>
                     {f.solutionName ? ` · ${f.solutionName}` : ""}
                   </span>
                 </button>
@@ -87,7 +87,7 @@ export default function AdFormatCatalog({ formats }: { formats: (CmsAdFormat & {
                     : "—"}
                 </p>
                 <p className="mt-2 text-sm">
-                  {selected.metricLabel}: <strong className="text-brand">{selected.metricValue ?? "—"}%</strong>
+                  {selected.metricLabel}: <strong className="text-brand">{selected.metricValue === null ? "—" : `${selected.metricValue}%`}</strong>
                 </p>
               </div>
               <p className="mt-3 text-center text-xs text-muted">{selected.description}</p>
@@ -117,7 +117,7 @@ export default function AdFormatCatalog({ formats }: { formats: (CmsAdFormat & {
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">{selected.metricLabel}</dt>
-                <dd className="font-semibold text-ink">{selected.metricValue ?? "—"}%</dd>
+                <dd className="font-semibold text-ink">{selected.metricValue === null ? "—" : `${selected.metricValue}%`}</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">{t("adfmt.specSolution")}</dt>

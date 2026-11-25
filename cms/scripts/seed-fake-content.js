@@ -448,7 +448,7 @@ function buildNews() {
     const fill = (s, city) => s.replaceAll('{city}', city).replaceAll('{topic}', topic).replaceAll('{n}', String(n));
     const titleVi = fill(t[0], NEWS_CITIES_VI[cityIdx]);
     const titleEn = fill(t[1], NEWS_CITIES_EN[cityIdx]);
-    // Ngày rải đều 2024-01 → 2026-11 (mỗi bài cách nhau ~8 ngày).
+    // Ngày rải đều 2024-01-03 → 2026-07-30 (118 bài, mỗi bài cách nhau 8 ngày).
     const d = new Date(Date.UTC(2024, 0, 3 + i * 8));
     const date = d.toISOString().slice(0, 10);
     items.push({
@@ -591,6 +591,19 @@ async function main() {
     const solutionIds = {};
     const caseStudyIds = {};
 
+    // Cảnh báo seed dở dang: guard mỗi collection chỉ kiểm tra bản vi —
+    // nếu seed dừng giữa chừng (vi có, en thiếu) thì lần chạy sau sẽ bỏ
+    // qua luôn vì guard tưởng đã có dữ liệu. Phát hiện sớm để chạy
+    // --force seed lại từ đầu. (Single xử lý riêng ở cuối.)
+    for (const [name, uid] of Object.entries(U)) {
+      if (name === 'snapshot' || name === 'global' || name === 'home') continue;
+      const vi = await countDocs(app, uid, 'vi');
+      const en = await countDocs(app, uid, 'en');
+      if (vi > 0 && en === 0) {
+        log(`CẢNH BÁO ${name}: có bản vi nhưng thiếu bản en (seed dở dang) — chạy --force để seed lại`);
+      }
+    }
+
     // --- Products (kèm blocks; solutions nối sau) ---
     if (FORCE) await deleteAll(app, U.product);
     if ((await countDocs(app, U.product)) === 0) {
@@ -700,7 +713,16 @@ async function main() {
           { time: '09:30', title: 'Keynote: xu hướng quảng cáo theo vị trí' },
           { time: '11:00', title: 'Thảo luận & networking' },
         ];
+        const agendaEn = [
+          { time: '09:00', title: 'Welcome & check-in' },
+          { time: '09:30', title: 'Keynote: location-based advertising trends' },
+          { time: '11:00', title: 'Panel & networking' },
+        ];
         const speakers = [
+          { name: 'Nguyễn Văn An', role: 'Head of Marketing', company: 'AWING' },
+          { name: 'Trần Thị Bình', role: 'Retail Media Lead', company: 'AWING' },
+        ];
+        const speakersEn = [
           { name: 'Nguyễn Văn An', role: 'Head of Marketing', company: 'AWING' },
           { name: 'Trần Thị Bình', role: 'Retail Media Lead', company: 'AWING' },
         ];
@@ -708,7 +730,7 @@ async function main() {
           { title: e.titleVi, slug: e.slug, description: rt(e.descVi), startDate: e.startDate, endDate: e.endDate,
             mode: e.mode, location: e.location, agenda, speakers, market: 'vn' },
           { title: e.titleEn, slug: e.slug, description: rt(e.descEn), startDate: e.startDate, endDate: e.endDate,
-            mode: e.mode, location: e.location, agenda, speakers, market: 'vn' });
+            mode: e.mode, location: e.location, agenda: agendaEn, speakers: speakersEn, market: 'vn' });
       }
       log(`events: ${EVENTS.length}`);
     } else log('events: đã có dữ liệu, bỏ qua');
@@ -801,7 +823,11 @@ async function main() {
           howItWorks: HOME.howItWorks.map((s) => ({ stepTitle: s.stepTitleEn, stepText: s.stepTextEn })) },
         'home'],
     ]) {
-      const existing = await app.documents(uid).findFirst({ locale: 'vi', status: 'published' });
+      // findFirst chỉ tìm bản published — single đã tồn tại dạng draft thì
+      // phải tìm cả draft, nếu không createBilingual sẽ lỗi vì single đã có.
+      const existing =
+        (await app.documents(uid).findFirst({ locale: 'vi', status: 'published' })) ??
+        (await app.documents(uid).findFirst({ locale: 'vi', status: 'draft' }));
       if (existing && !FORCE) { log(`${label}: đã có dữ liệu, bỏ qua`); continue; }
       if (existing) {
         await app.documents(uid).update({ documentId: existing.documentId, locale: 'vi', data: viData, status: 'published' });

@@ -107,7 +107,7 @@ function renderBlock(block: Block, index: number, t: (key: DictKey, vars?: Recor
         <Section key={index} title={block.title}>
           <div className="grid gap-4 md:grid-cols-3">
             {block.items.map((item) => (
-              <ContentCard key={item.title} typeLabel="Case study" title={item.title} description={item.summary} href={item.href} />
+              <ContentCard key={item.title} typeLabel={t("res.typeCaseStudy")} title={item.title} description={item.summary} href={item.href} />
             ))}
           </div>
         </Section>
@@ -164,13 +164,9 @@ function renderBlock(block: Block, index: number, t: (key: DictKey, vars?: Recor
       if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
         console.warn(`[BlockRenderer] Block chưa hỗ trợ: ${unknown.type}`);
       }
-      return (
-        <Section key={index}>
-          <div className="rounded-2xl border border-dashed border-border bg-surface p-5 text-sm text-muted">
-            {t("docs.unknownBlock", { type: unknown.type })}
-          </div>
-        </Section>
-      );
+      // Block lạ thì bỏ qua hẳn (khớp với mapStrapiBlocks đã drop block lạ)
+      // — không render khung "chưa hỗ trợ" lên trang thật.
+      return null;
     }
   }
 }

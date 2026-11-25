@@ -1,17 +1,17 @@
-// Header R1-2 (FE 15-17, Docs §4.1): giữ vỏ cố định của Figma cũ (nền mờ
-// rgba(244,244,247,0.95) + blur, logo AWING, h-16) nhưng thay menu bằng
-// IA mới: Products (mega menu 6 cột theo màu sản phẩm) + Data + Insights &
+// Header R1-2 (FE 15-17, Docs §4.1) + R1-3/R1-4: giữ vỏ cố định của Figma
+// cũ (nền mờ rgba(244,244,247,0.95) + blur, logo AWING, h-16) với IA mới:
+// Products (mega menu 6 cột theo màu sản phẩm) + Data + Insights &
 // Resources + Company (dropdown), thanh công cụ (Search, ngôn ngữ, Sign in
 // 2 lựa chọn, Get data), menu mobile dạng Drawer.
 //
-// Trang chưa có ở R1-2 (Products/Solutions ở R1-3, Resources/Events/News /
-// Company ở R1-4) hiện mờ + không bấm được — giữ quy ước "không nút chết"
-// của dự án; chỉ các trang đã có thật (/locations, /advertisers, /contact,
-// /) mới là link. Mega menu và dropdown đóng bằng Escape, bấm ngoài, và
-// điều hướng bằng bàn phím (mũi tên trong dropdown, Tab trong mega menu).
+// Mọi mục menu đều là link tới trang đã có thật — quy ước "không nút chết"
+// của dự án. 3 mục Data chưa có trang ở R1 (Overview/Explorer/Methodology
+// thuộc R2 Data & Account) đã gỡ khỏi menu; khi R2 có trang thì thêm lại.
+// Mega menu và dropdown đóng bằng Escape, bấm ngoài, và điều hướng bằng
+// bàn phím (mũi tên trong dropdown, Tab trong mega menu).
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import Link from "next/link";
 import AuthSession from "./AuthSession";
 import { useLocale } from "./LocaleProvider";
@@ -97,7 +97,7 @@ export default function Header({
   // Menu đang mở: null | "products" | "data" | "insights" | "company".
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const navRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLElement>(null);
   const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const toggleMenu = (id: string) => setOpenMenu((prev) => (prev === id ? null : id));
@@ -123,30 +123,45 @@ export default function Header({
     };
   }, [openMenu]);
 
+  // Data: chỉ Bản đồ nhiệt có trang ở R1 (/locations). Overview/Explorer/
+  // Methodology thuộc R2 (Data & Account) — gỡ khỏi menu, không để span chết.
   const dataLinks: MenuLink[] = [
-    { label: t("nav.dataOverview"), href: null },
-    { label: t("nav.dataExplorer"), href: null },
     { label: t("nav.dataHeatmap"), href: withLocale("/locations", locale) },
-    { label: t("nav.dataMethodology"), href: null },
   ];
   const insightsLinks: MenuLink[] = [
-    { label: t("nav.resReports"), href: null },
-    { label: t("nav.resPapers"), href: null },
-    { label: t("nav.resCaseStudies"), href: withLocale("/advertisers", locale) },
-    { label: t("nav.resEvents"), href: null },
-    { label: t("nav.resNews"), href: null },
+    { label: t("nav.resReports"), href: withLocale("/resources?type=report", locale) },
+    { label: t("nav.resPapers"), href: withLocale("/resources?type=paper", locale) },
+    { label: t("nav.resCaseStudies"), href: withLocale("/resources?type=case-study", locale) },
+    { label: t("nav.resEvents"), href: withLocale("/events", locale) },
+    { label: t("nav.resNews"), href: withLocale("/news", locale) },
   ];
   const companyLinks: MenuLink[] = [
-    { label: t("nav.compAbout"), href: null },
-    { label: t("nav.compPartners"), href: null },
-    { label: t("nav.compCustomers"), href: null },
-    { label: t("nav.compInvestors"), href: null },
-    { label: t("nav.compCareers"), href: null },
+    { label: t("nav.compAbout"), href: withLocale("/about", locale) },
+    { label: t("nav.compPartners"), href: withLocale("/partners", locale) },
+    { label: t("nav.compCustomers"), href: withLocale("/customers", locale) },
+    { label: t("nav.compInvestors"), href: withLocale("/investors", locale) },
+    { label: t("nav.compCareers"), href: withLocale("/careers", locale) },
     { label: t("nav.compContact"), href: withLocale("/contact", locale) },
   ];
 
+  // Điều hướng bằng phím mũi tên trong dropdown (theo ARIA menu pattern).
+  const onMenuKeyDown = (event: ReactKeyboardEvent<HTMLUListElement>) => {
+    const items = Array.from(
+      event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+    );
+    const index = items.indexOf(document.activeElement as HTMLElement);
+    let next: HTMLElement | undefined;
+    if (event.key === "ArrowDown") next = items[index + 1] ?? items[0];
+    else if (event.key === "ArrowUp") next = items[index - 1] ?? items[items.length - 1];
+    else if (event.key === "Home") next = items[0];
+    else if (event.key === "End") next = items[items.length - 1];
+    else return;
+    event.preventDefault();
+    next?.focus();
+  };
+
   const renderLinks = (links: MenuLink[]) => (
-    <ul role="menu" className="py-2">
+    <ul role="menu" className="py-2" onKeyDown={onMenuKeyDown}>
       {links.map((link) => (
         <li key={link.label} role="none">
           {link.href ? (
@@ -180,7 +195,7 @@ export default function Header({
         buttonRefs.current[id] = el;
       }}
       aria-expanded={openMenu === id}
-      aria-haspopup="true"
+      aria-haspopup="menu"
       onClick={() => toggleMenu(id)}
       className={`flex items-center gap-1.5 py-1 text-sm transition-colors hover:text-ink ${
         openMenu === id ? "font-medium text-ink" : ""
@@ -226,12 +241,16 @@ export default function Header({
   );
 
   return (
+    // navRef đặt trên <header> để mega menu (nằm ngoài thanh nav hẹp) vẫn
+    // được tính là "bên trong" khi kiểm tra bấm ngoài — trước đây ref ở div
+    // hẹp nên mọi cú bấm trong mega menu đều đóng menu trước khi link kịp
+    // điều hướng.
     <header
+      ref={navRef}
       className="fixed top-0 right-0 left-0 z-50 border-b border-border"
       style={{ backgroundColor: "rgba(244, 244, 247, 0.95)", backdropFilter: "blur(16px)" }}
     >
       <div
-        ref={navRef}
         className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:px-6"
       >
         <div className="flex items-center gap-3">
@@ -312,17 +331,24 @@ export default function Header({
               const hex = PRODUCT_HEX[product.color];
               return (
                 <div key={product.slug} className="border-t-2 pt-3" style={{ borderColor: hex.base }}>
-                  <p className="text-sm font-bold text-ink">{product.name}</p>
+                  <Link
+                    href={withLocale(`/products/${product.slug}`, locale)}
+                    onClick={() => setOpenMenu(null)}
+                    className="text-sm font-bold text-ink hover:text-brand"
+                  >
+                    {product.name}
+                  </Link>
                   <p className="mt-1 text-xs leading-5 text-muted">{product.slogan}</p>
                   <ul className="mt-3 space-y-1.5">
                     {product.solutions.map((solution) => (
                       <li key={solution.slug}>
-                        <span
-                          title={t("nav.noDestination")}
-                          className="cursor-not-allowed text-xs text-muted/60"
+                        <Link
+                          href={withLocale(`/products/${product.slug}/${solution.slug}`, locale)}
+                          onClick={() => setOpenMenu(null)}
+                          className="text-xs text-muted hover:text-brand"
                         >
                           {solution.name}
-                        </span>
+                        </Link>
                       </li>
                     ))}
                   </ul>
@@ -376,11 +402,23 @@ export default function Header({
                   const hex = PRODUCT_HEX[product.color];
                   return (
                     <div key={product.slug} className="border-l-2 pl-3" style={{ borderColor: hex.base }}>
-                      <p className="text-sm font-bold text-ink">{product.name}</p>
+                      <Link
+                        href={withLocale(`/products/${product.slug}`, locale)}
+                        onClick={() => setDrawerOpen(false)}
+                        className="text-sm font-bold text-ink hover:text-brand"
+                      >
+                        {product.name}
+                      </Link>
                       <ul className="mt-1 space-y-1">
                         {product.solutions.map((solution) => (
-                          <li key={solution.slug} className="text-xs text-muted/60">
-                            {solution.name}
+                          <li key={solution.slug}>
+                            <Link
+                              href={withLocale(`/products/${product.slug}/${solution.slug}`, locale)}
+                              onClick={() => setDrawerOpen(false)}
+                              className="block py-0.5 text-xs text-muted hover:text-brand"
+                            >
+                              {solution.name}
+                            </Link>
                           </li>
                         ))}
                       </ul>

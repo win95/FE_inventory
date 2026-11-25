@@ -5,6 +5,7 @@
 // #4 chưa chốt — chưa tạo tài khoản Turnstile) thì chỉ hiện dòng ghi chú
 // "mô phỏng" và gọi onToken(null): backend ở chế độ giả lập sẽ chấp nhận
 // (ghi log) thay vì xác minh. Không tự bịa token, không chặn form.
+// Widget được remove() khi unmount (không render lại chồng lên khi remount).
 "use client";
 
 import { useEffect, useRef } from "react";
@@ -24,6 +25,7 @@ declare global {
           "error-callback"?: () => void;
         },
       ) => string;
+      remove?: (widgetId: string) => void;
     };
   }
 }
@@ -46,9 +48,10 @@ export default function TurnstileWidget({
       return;
     }
     let cancelled = false;
+    let widgetId: string | undefined;
     const render = () => {
       if (cancelled || !containerRef.current || !window.turnstile) return;
-      window.turnstile.render(containerRef.current, {
+      widgetId = window.turnstile.render(containerRef.current, {
         sitekey: SITE_KEY,
         callback: (token) => onTokenRef.current(token),
         "expired-callback": () => onTokenRef.current(null),
@@ -57,22 +60,23 @@ export default function TurnstileWidget({
     };
     if (window.turnstile) {
       render();
-      return;
+    } else {
+      const existing = document.querySelector(
+        'script[src*="challenges.cloudflare.com/turnstile"]',
+      );
+      if (existing) {
+        existing.addEventListener("load", render);
+      } else {
+        const script = document.createElement("script");
+        script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+        script.async = true;
+        script.onload = render;
+        document.head.appendChild(script);
+      }
     }
-    const existing = document.querySelector(
-      'script[src*="challenges.cloudflare.com/turnstile"]',
-    );
-    if (existing) {
-      existing.addEventListener("load", render);
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
-    script.async = true;
-    script.onload = render;
-    document.head.appendChild(script);
     return () => {
       cancelled = true;
+      if (widgetId !== undefined) window.turnstile?.remove?.(widgetId);
     };
   }, []);
 

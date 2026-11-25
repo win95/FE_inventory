@@ -1,8 +1,13 @@
 // Tầng gọi API duy nhất của Frontend — mọi dữ liệu hiển thị đều đi qua đây.
-// Hai client tách riêng theo ranh giới đã chốt (Plan §6):
-//   - client nghiệp vụ: backend FastAPI + SQLite (gợi ý, số liệu, heatmap,
-//     Lead/Contact, đăng nhập Google, realtime SSE);
-//   - client nội dung: Strapi CMS — xem src/lib/strapi.ts (blog, case study, product, nội dung home).
+//
+// Kiến trúc BFF: trình duyệt chỉ nói chuyện với Next.js; Next.js gọi các
+// dịch vụ phía sau (FastAPI, Strapi).
+//   - Trình duyệt: gọi same-origin /api/backend/* → route handler Next.js
+//     proxy sang FastAPI (xem src/app/api/backend/[...path]/route.ts).
+//     Không còn địa chỉ backend nào trong bundle trình duyệt.
+//   - Server (SSR/server component): gọi thẳng BACKEND_URL (xem lib/backend).
+//   - Nội dung: Strapi CMS — chỉ gọi phía server, xem src/lib/strapi.ts
+//     (blog, case study, product, nội dung home).
 // Không mock, không số liệu ghi cứng: backend chưa chạy hoặc kho rỗng thì
 // trả về trạng thái rỗng/lỗi rõ ràng.
 //
@@ -23,15 +28,18 @@ import type {
 } from "./types";
 import { translate, type Locale } from "./i18n";
 import { ApiError } from "./errors";
+import { BACKEND_URL } from "./backend";
 
 export { ApiError } from "./errors";
 export { fetchCaseStudies, isStrapiConfigured, STRAPI_BASE_URL } from "./strapi";
 
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "";
-
-export function isBackendConfigured(): boolean {
-  return API_BASE_URL.length > 0;
+// Base URL gọi backend theo ngữ cảnh chạy: trình duyệt đi qua proxy
+// same-origin /api/backend (route handler Next.js), server gọi thẳng
+// BACKEND_URL. Path "/api/..." giữ nguyên ở cả hai ngữ cảnh — proxy chỉ bỏ
+// tiền tố /api/backend rồi chuyển tiếp.
+function apiBase(): string {
+  if (typeof window === "undefined") return BACKEND_URL;
+  return "/api/backend";
 }
 
 async function requestJson<T>(
@@ -39,12 +47,13 @@ async function requestJson<T>(
   init?: RequestInit,
   locale: Locale = "vi",
 ): Promise<T> {
-  if (!isBackendConfigured()) {
+  const base = apiBase();
+  if (typeof window === "undefined" && !base) {
     throw new ApiError(translate(locale, "api.noBackendConfig"), 0);
   }
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, {
+    res = await fetch(`${base}${path}`, {
       ...init,
       headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     });
@@ -198,12 +207,13 @@ export async function applyJob(
   formData: FormData,
   locale: Locale = "vi",
 ): Promise<{ applicationId: number; received: boolean }> {
-  if (!isBackendConfigured()) {
+  const base = apiBase();
+  if (typeof window === "undefined" && !base) {
     throw new ApiError(translate(locale, "api.noBackendConfig"), 0);
   }
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}/api/jobs/${encodeURIComponent(slug)}/apply`, {
+    res = await fetch(`${base}/api/jobs/${encodeURIComponent(slug)}/apply`, {
       method: "POST",
       body: formData,
     });
@@ -304,10 +314,8 @@ export function subscribeNetworkStats(
   onError: (message: string) => void,
   locale: Locale = "vi",
 ): () => void {
-  if (!isBackendConfigured()) {
-    onError(translate(locale, "api.noBackendConfig"));
-    return () => {};
-  }
+  // Chỉ gọi từ trình duyệt: SSE đi qua proxy same-origin /api/backend
+  // (route handler Next.js stream tiếp từ backend).
   let stopped = false;
   let pollTimer: ReturnType<typeof setInterval> | null = null;
   let source: EventSource | null = null;
@@ -330,7 +338,7 @@ export function subscribeNetworkStats(
   };
 
   try {
-    source = new EventSource(`${API_BASE_URL}/api/events/stats`);
+    source = new EventSource(`${apiBase()}/api/events/stats`);
     source.onmessage = (event) => {
       try {
         onSnapshot(JSON.parse(event.data) as NetworkStats | null);

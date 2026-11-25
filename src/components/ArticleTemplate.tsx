@@ -53,8 +53,8 @@ export default function ArticleTemplate({
             <ShareButtons title={title} url={shareUrl} />
           </div>
           {headings.length > 0 && (
-            <nav aria-label="Table of contents" className="mt-8 rounded-2xl border border-border bg-surface p-5">
-              <p className="text-sm font-semibold text-ink">Nội dung</p>
+            <nav aria-label={locale === "vi" ? "Mục lục" : "Table of contents"} className="mt-8 rounded-2xl border border-border bg-surface p-5">
+              <p className="text-sm font-semibold text-ink">{locale === "vi" ? "Nội dung" : "Contents"}</p>
               <ul className="mt-2 space-y-1.5 text-sm">
                 {headings.map((h) => (
                   <li key={h.id} style={{ paddingLeft: `${(h.level - 1) * 12}px` }}>

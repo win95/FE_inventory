@@ -102,6 +102,7 @@ export default async function NewsPage({
             hrefFor={(p) => hrefFor({}, p)}
             prevLabel={translate(loc, "ui.prevPage")}
             nextLabel={translate(loc, "ui.nextPage")}
+            ariaLabel={translate(loc, "ui.pagination")}
           />
         </div>
       </div>

@@ -26,6 +26,7 @@ import Reveal from "@/components/motion/Reveal";
 import { ContentCard, ProductCard, StatsCard } from "@/components/content";
 import { fetchArticles, fetchDataSnapshot, fetchEvents, fetchHome, fetchProducts, fetchResources } from "@/lib/strapi";
 import { translate, withLocale, type Locale } from "@/lib/i18n";
+import { formatDate } from "@/lib/format";
 
 function byDateDesc(a: { date: string | null }, b: { date: string | null }) {
   return (b.date ?? "").localeCompare(a.date ?? "");
@@ -39,9 +40,9 @@ export default async function Home({ params }: { params: Promise<{ locale: Local
     fetchHome(loc),
     fetchProducts(loc),
     fetchDataSnapshot(loc),
-    fetchArticles(loc, 200),
-    fetchResources(loc, 100),
-    fetchEvents(loc, 100),
+    fetchArticles(loc, 3, "publishedDate:desc"),
+    fetchResources(loc, 3, "publishedDate:desc"),
+    fetchEvents(loc, 3, "startDate:desc"),
   ]);
 
   const showcase = [
@@ -104,7 +105,7 @@ export default async function Home({ params }: { params: Promise<{ locale: Local
           <h2 className="font-display text-3xl font-black text-ink">{translate(loc, "home.snapshotTitle")}</h2>
           {snapshot?.snapshotDate && (
             <p className="mt-2 text-sm text-muted">
-              {translate(loc, "home.snapshotUpdated", { date: snapshot.snapshotDate })}
+              {translate(loc, "home.snapshotUpdated", { date: formatDate(snapshot.snapshotDate, loc) })}
               {snapshot.note ? ` — ${snapshot.note}` : ""}
             </p>
           )}

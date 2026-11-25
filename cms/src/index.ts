@@ -82,6 +82,16 @@ async function grantPublicPermissions(strapi: Core.Strapi) {
       strapi.log.info(`[bootstrap] Đã cấp quyền public: ${action}`);
     }
   }
+  // Thu hồi quyền public cho content API không còn trong PUBLIC_ACTIONS —
+  // trước đây chỉ thêm, không thu hồi nên quyền đã bỏ vẫn còn hiệu lực.
+  // Chỉ thu hồi action 'api::*' (nội dung) — không chạm quyền khác của role.
+  const wanted = new Set(PUBLIC_ACTIONS);
+  for (const p of existing as { id: number; action: string }[]) {
+    if (p.action.startsWith('api::') && !wanted.has(p.action)) {
+      await strapi.db.query('plugin::users-permissions.permission').delete({ where: { id: p.id } });
+      strapi.log.info(`[bootstrap] Đã thu hồi quyền public: ${p.action}`);
+    }
+  }
 }
 
 async function ensureStrapiWebhook(strapi: Core.Strapi) {
@@ -90,10 +100,25 @@ async function ensureStrapiWebhook(strapi: Core.Strapi) {
     return;
   }
   // UID đúng của Strapi 5 là 'strapi::webhook' (xem @strapi/core webhook-store).
-  const existing = await strapi.db
+  // Tìm theo tên 'awing-backend' (không theo URL): đổi STRAPI_WEBHOOK_URL
+  // thì cập nhật webhook cũ thay vì để nó bắn về URL cũ + tạo thêm cái mới.
+  const named = await strapi.db
     .query('strapi::webhook')
-    .findMany({ where: { url } });
-  if (existing.length > 0) {
+    .findMany({ where: { name: 'awing-backend' } });
+  const current = named.find((w: { url: string }) => w.url === url);
+  if (current) {
+    return;
+  }
+  if (named.length > 0) {
+    const first = named[0] as { id: number };
+    await strapi.db.query('strapi::webhook').update({
+      where: { id: first.id },
+      data: { url, headers: {}, events: WEBHOOK_EVENTS, enabled: true },
+    });
+    for (const extra of named.slice(1) as { id: number }[]) {
+      await strapi.db.query('strapi::webhook').delete({ where: { id: extra.id } });
+    }
+    strapi.log.info(`[bootstrap] Đã cập nhật webhook tới backend: ${url}`);
     return;
   }
   await strapi.db.query('strapi::webhook').create({

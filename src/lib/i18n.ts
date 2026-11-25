@@ -33,8 +33,6 @@ const vi = {
   "nav.switchLanguage": "Chuyển ngôn ngữ giao diện",
   "auth.signInGoogle": "Đăng nhập với Google",
   "auth.signOut": "Đăng xuất",
-  "auth.googleUnavailable":
-    "Đăng nhập Google do backend xác thực — backend chưa được cấu hình nên tạm thời chưa dùng được.",
   "hero.titleA": "Kênh marketing theo vị trí — tiếp cận người dùng",
   "hero.titleB": "ngay tại địa điểm họ đang ở",
   "hero.subtitleA":
@@ -49,7 +47,7 @@ const vi = {
   "stats.venues": "Địa điểm phủ sóng",
   "stats.emptyTitle": "Chưa có số liệu mạng lưới",
   "stats.noBackend":
-    "Chưa kết nối được backend — cấu hình NEXT_PUBLIC_API_BASE_URL và chạy backend FastAPI + SQLite.",
+    "Chưa kết nối được backend — kiểm tra BACKEND_URL (phía server) và chạy backend FastAPI + SQLite.",
   "stats.emptyDb":
     "Database chưa có số liệu. Thêm bản ghi vào SQLite thì các ô số liệu sẽ hiện ở đây.",
   "stats.errorTitle": "Không tải được số liệu mạng lưới",
@@ -140,7 +138,7 @@ const vi = {
     "Chưa có số liệu tháng theo thành phố từ backend. Thêm số liệu vào SQLite thì biểu đồ sẽ hiện ở đây.",
   "locations.noDirectory":
     "Chưa có thư mục địa điểm từ backend. Thêm chuỗi/địa điểm vào SQLite thì danh sách sẽ hiện ở đây.",
-  "api.noBackendConfig": "Chưa cấu hình địa chỉ backend (NEXT_PUBLIC_API_BASE_URL).",
+  "api.noBackendConfig": "Chưa cấu hình địa chỉ backend (BACKEND_URL, phía server).",
   "api.backendUnreachable": "Không kết nối được tới backend. Kiểm tra backend có đang chạy không.",
   "api.backendError": "Backend trả lỗi {status}.",
   "api.statsFailed": "Không tải được số liệu.",
@@ -204,6 +202,7 @@ const vi = {
   "modal.preview": "Xem trước",
   "common.backHome": "← Trang chủ",
   "ui.prevPage": "Trang trước",
+  "ui.pagination": "Phân trang",
   "ui.nextPage": "Trang sau",
   "ui.breadcrumb": "Điều hướng phân cấp",
   "ui.showToast": "Hiện thông báo",
@@ -332,6 +331,7 @@ const vi = {
   "lead.consentContact": "Đồng ý để AWING liên hệ về yêu cầu này.",
   "lead.consentMarketing": "Nhận tin tức và tài nguyên từ AWING.",
   "lead.consentRequired": "Cần đồng ý để chúng tôi liên hệ lại.",
+  "lead.nameCompanyRequired": "Vui lòng nhập họ tên và công ty.",
   "lead.personalEmail":
     "Email này trông như email cá nhân — nên dùng email công ty để xác thực nhanh hơn.",
   "lead.phoneInvalid": "Số điện thoại chưa đúng định dạng quốc tế (vd. +84 901 234 567).",
@@ -509,12 +509,10 @@ export type DictKey = keyof typeof vi;
 const en: Record<DictKey, string> = {
   "nav.main": "Main navigation",
   "nav.noDestination": "No destination yet — coming later",
-  "nav.trusted": "Contact us",
+  "nav.trusted": "Trusted by",
   "nav.switchLanguage": "Switch interface language",
   "auth.signInGoogle": "Sign in with Google",
   "auth.signOut": "Sign out",
-  "auth.googleUnavailable":
-    "Google sign-in is handled by the backend — it isn't configured yet, so it's unavailable for now.",
   "hero.titleA": "The location-based marketing channel — reach users",
   "hero.titleB": "right where they are",
   "hero.subtitleA":
@@ -529,7 +527,7 @@ const en: Record<DictKey, string> = {
   "stats.venues": "Active access points",
   "stats.emptyTitle": "No network stats yet",
   "stats.noBackend":
-    "Couldn't reach the backend — set NEXT_PUBLIC_API_BASE_URL and run the FastAPI backend + SQLite.",
+    "Couldn't reach the backend — check BACKEND_URL (server-side) and run the FastAPI backend + SQLite.",
   "stats.emptyDb":
     "The database has no stats yet. Add records to SQLite and the numbers will appear here.",
   "stats.errorTitle": "Couldn't load network stats",
@@ -620,7 +618,7 @@ const en: Record<DictKey, string> = {
     "No monthly city figures from the backend yet. Add data to SQLite and the chart will appear here.",
   "locations.noDirectory":
     "No location directory from the backend yet. Add chains/locations to SQLite and the list will appear here.",
-  "api.noBackendConfig": "Backend address isn't configured (NEXT_PUBLIC_API_BASE_URL).",
+  "api.noBackendConfig": "Backend address isn't configured (BACKEND_URL, server-side).",
   "api.backendUnreachable": "Couldn't reach the backend. Check that it's running.",
   "api.backendError": "Backend returned error {status}.",
   "api.statsFailed": "Couldn't load the stats.",
@@ -684,6 +682,7 @@ const en: Record<DictKey, string> = {
   "modal.preview": "Preview",
   "common.backHome": "← Home",
   "ui.prevPage": "Previous page",
+  "ui.pagination": "Pagination",
   "ui.nextPage": "Next page",
   "ui.breadcrumb": "Breadcrumb",
   "ui.showToast": "Show toast",
@@ -812,6 +811,7 @@ const en: Record<DictKey, string> = {
   "lead.consentContact": "I agree to be contacted about this request.",
   "lead.consentMarketing": "Send me AWING news and resources.",
   "lead.consentRequired": "Please agree so we can contact you.",
+  "lead.nameCompanyRequired": "Please enter your name and company.",
   "lead.personalEmail":
     "This looks like a personal email — a work email verifies faster.",
   "lead.phoneInvalid": "Phone number should be in international format (e.g. +84 901 234 567).",

@@ -25,7 +25,7 @@ export default function ShareButtons({ title, url }: { title: string; url: strin
   const btn =
     "rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-ink hover:border-brand hover:text-brand";
   return (
-    <div className="flex flex-wrap items-center gap-2" aria-label={t("share.label")}>
+    <div role="group" className="flex flex-wrap items-center gap-2" aria-label={t("share.label")}>
       <span className="text-xs font-semibold text-muted">{t("share.label")}</span>
       <button type="button" onClick={copy} className={btn}>
         {copied ? t("share.copied") : t("share.copyLink")}

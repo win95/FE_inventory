@@ -35,7 +35,9 @@ function decodePayload(token: string): Record<string, unknown> | null {
   try {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
-    const json = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+    // base64url không padding — bù "=" cho đủ bội số 4 trước khi atob.
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const json = atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4));
     return JSON.parse(json) as Record<string, unknown>;
   } catch {
     return null;

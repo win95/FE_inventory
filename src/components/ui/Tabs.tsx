@@ -38,8 +38,10 @@ export default function Tabs({ items, value, onChange, ariaLabel }: TabsProps) {
             ref={(el) => {
               refs.current[i] = el;
             }}
+            id={`tab-${item.id}`}
             role="tab"
             aria-selected={active}
+            aria-controls={`tabpanel-${item.id}`}
             onClick={() => onChange(item.id)}
             onKeyDown={(e) => onKeyDown(e, i)}
             className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs transition-colors ${

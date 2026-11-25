@@ -275,7 +275,7 @@ export default function SearchOverlay({
             aria-expanded={shown.length > 0}
             aria-activedescendant={active >= 0 && active < shown.length ? `search-item-${active}` : undefined}
             role="combobox"
-            aria-controls="search-suggestions"
+            aria-controls={shown.length > 0 ? "search-suggestions" : undefined}
             aria-autocomplete="list"
             className="w-full bg-transparent text-lg text-ink outline-none placeholder:text-muted"
           />

@@ -1,5 +1,7 @@
-// Nút dùng chung (FE 7) — 4 biến thể theo token R1 (§7.2), 3 cỡ.
+// Nút dùng chung (FE 7) — 5 biến thể theo token R1 (§7.2), 3 cỡ.
 // href nội bộ thì render Next Link, href ngoài thì <a> thường.
+// disabled + href: link vẫn focus được nhưng bấm không đi đâu (aria-disabled
+// + chặn click), vì <a> không có thuộc tính disabled như <button>.
 "use client";
 
 import Link from "next/link";
@@ -45,18 +47,24 @@ export default function Button({
   className = "",
   ariaLabel,
 }: ButtonProps) {
-  const cls = `inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${VARIANTS[variant]} ${SIZES[size]} ${className}`;
+  const cls = `inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${disabled ? "cursor-not-allowed opacity-40" : ""} ${VARIANTS[variant]} ${SIZES[size]} ${className}`;
   if (href) {
     const external = href.startsWith("http") || href.startsWith("mailto:");
+    const linkProps = {
+      className: cls,
+      "aria-label": ariaLabel,
+      "aria-disabled": disabled || undefined,
+      onClick: disabled ? (event: React.MouseEvent) => event.preventDefault() : undefined,
+    };
     if (external) {
       return (
-        <a href={href} className={cls} aria-label={ariaLabel}>
+        <a href={href} {...linkProps}>
           {children}
         </a>
       );
     }
     return (
-      <Link href={href} className={cls} aria-label={ariaLabel}>
+      <Link href={href} {...linkProps}>
         {children}
       </Link>
     );

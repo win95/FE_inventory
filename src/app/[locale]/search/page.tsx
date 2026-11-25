@@ -200,6 +200,14 @@ export default async function SearchPage({
             ))}
           </div>
 
+          {data === null && (
+            <p className="mt-8 text-muted">
+              {loc === "vi"
+                ? "Không tải được kết quả tìm kiếm, thử lại sau."
+                : "Search results could not be loaded, please try again."}
+            </p>
+          )}
+
           {data !== null && data.results.length === 0 && (
             <p className="mt-8 text-muted">
               {translate(loc, "searchpage.empty", { q })}
@@ -231,6 +239,7 @@ export default async function SearchPage({
                 hrefFor={(p) => hrefFor({ page: p })}
                 prevLabel={loc === "vi" ? "Trước" : "Previous"}
                 nextLabel={loc === "vi" ? "Sau" : "Next"}
+                ariaLabel={translate(loc, "ui.pagination")}
               />
             </div>
           )}

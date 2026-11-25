@@ -9,13 +9,8 @@
 // dung chi tiết (mô tả dài, block) sẽ lấy từ Strapi (Product/Solution) ở
 // R1-3; khi đó file này chỉ còn giữ thứ tự + màu, hoặc bỏ hẳn.
 
-export type ProductColor =
-  | "location"
-  | "retail"
-  | "measurement"
-  | "insight"
-  | "network"
-  | "adsmanager";
+import type { ProductColor } from "./product-theme";
+export type { ProductColor };
 
 /** Màu chính / tối / nhạt của từng sản phẩm (Docs §7.2). */
 export const PRODUCT_HEX: Record<

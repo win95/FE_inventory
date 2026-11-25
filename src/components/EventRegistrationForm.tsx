@@ -13,7 +13,19 @@ import { Button, Input } from "./ui";
 
 function toIcsDate(iso: string | null): string {
   if (!iso) return "";
-  return iso.replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  // Date-only (vd "2026-11-25") → nửa đêm UTC; datetime giữ nguyên.
+  const v = iso.includes("T") ? iso : `${iso}T00:00:00Z`;
+  return v.replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+// TEXT trong .ics theo RFC 5545: escape \, ; , và xuống dòng.
+function escapeIcsText(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r\n/g, "\\n")
+    .replace(/\n/g, "\\n");
 }
 
 export default function EventRegistrationForm({
@@ -44,9 +56,11 @@ export default function EventRegistrationForm({
       "PRODID:-//AWING//Event//EN",
       "BEGIN:VEVENT",
       `UID:${slug}@awing.vn`,
+      // DTSTAMP bắt buộc theo RFC 5545 (file cũ thiếu nên một số lịch từ chối).
+      `DTSTAMP:${toIcsDate(new Date().toISOString())}`,
       `DTSTART:${dtStart}`,
       `DTEND:${dtEnd || dtStart}`,
-      `SUMMARY:${title.replace(/[,;\\]/g, " ")}`,
+      `SUMMARY:${escapeIcsText(title)}`,
       "END:VEVENT",
       "END:VCALENDAR",
     ].join("\r\n");

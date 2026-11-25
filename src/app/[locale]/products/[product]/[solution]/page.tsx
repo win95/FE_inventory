@@ -129,7 +129,11 @@ export default async function SolutionDetailPage({
           </h2>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {caseStudies.slice(0, 3).map((cs) => (
-              <div key={cs.title} className="rounded-2xl border border-border bg-white p-5">
+              <Link
+                key={cs.title}
+                href={withLocale(`/case-studies/${cs.slug}`, loc)}
+                className="rounded-2xl border border-border bg-white p-5 transition-colors hover:border-brand"
+              >
                 <p className="text-xs font-semibold tracking-wide text-muted uppercase">
                   {translate(loc, "adv.studiesTitle")}
                 </p>
@@ -140,7 +144,7 @@ export default async function SolutionDetailPage({
                     {cs.metricLabel}: <strong className="text-ink">{cs.metricValue}</strong>
                   </p>
                 )}
-              </div>
+              </Link>
             ))}
           </div>
         </section>

@@ -1,12 +1,14 @@
-// E2E lead + OTP (FE 51): Get data → nhập form → mã sai còn 4 lần thử →
-// mã đúng (đọc từ log email giả lập của BE) → bổ sung hồ sơ → lưu → đóng.
+// E2E lead + OTP (FE 51): Nhận dữ liệu → nhập form → mã sai còn 4 lần thử →
+// mã đúng (đọc từ log email giả của BE) → bổ sung hồ sơ → đóng dialog.
+// Nhãn nút ở /vi là "Nhận dữ liệu" (fix i18n e046e64 trên main: CTA header
+// bản địa hóa theo locale; "Get data" chỉ còn ở /en).
 import { expect, test } from "@playwright/test";
 import { markLog, readOtpSince } from "./helpers";
 
 test("lead + OTP flow", async ({ page }) => {
   const email = `e2e+${Date.now()}@example.com`;
   await page.goto("/vi");
-  await page.getByRole("button", { name: "Get data" }).first().click();
+  await page.getByRole("button", { name: "Nhận dữ liệu" }).first().click();
 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();

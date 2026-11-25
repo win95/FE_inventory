@@ -42,7 +42,8 @@ export default async function ResourcesPage({
   const year = typeof sp.year === "string" ? sp.year : "";
   const page = Math.max(1, Number(typeof sp.page === "string" ? sp.page : "1") || 1);
 
-  const all = await fetchResources(loc);
+  // Danh sách sắp xếp theo ngày đăng mới nhất (sort phía Strapi).
+  const all = await fetchResources(loc, 100, "publishedDate:desc");
   const industries = [...new Set(all.map((r) => r.industry).filter((x): x is string => Boolean(x)))].sort();
   const years = [...new Set(all.map((r) => (r.publishedDate ?? "").slice(0, 4)).filter(Boolean))].sort().reverse();
 
@@ -126,6 +127,7 @@ export default async function ResourcesPage({
             hrefFor={(p) => hrefFor({}, p)}
             prevLabel={translate(loc, "ui.prevPage")}
             nextLabel={translate(loc, "ui.nextPage")}
+            ariaLabel={translate(loc, "ui.pagination")}
           />
         </div>
       </div>

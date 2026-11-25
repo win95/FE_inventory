@@ -15,15 +15,23 @@ Strapi CMS + Docker Compose. Đọc hết mục 1 (trạng thái) trước khi c
 ## 2. Tổng quan kiến trúc (mô hình lai đã chốt)
 
 ```text
-Người dùng ──► Next.js Frontend (:3000)
-                 │  nội dung blog/case study/product/home
-                 ├────────────────────────► Strapi CMS (:1337) + Postgres (:5432)
-                 │  nghiệp vụ: gợi ý, số liệu, heatmap, Lead/Contact, login Google
-                 └────────────────────────► FastAPI + SQLite (:8000, chạy trên host)
+Người dùng ──► Next.js Frontend (:3000) ──► FastAPI + SQLite (:8000, chạy trên host)
+                 │  (BFF: mọi gọi nghiệp vụ qua /api/backend/* trên cùng origin)
+                 └────────────────────────► Strapi CMS (:1337) + Postgres (:5432)
+                                          (chỉ phía server; ảnh CMS qua /_next/image)
 Editor ────► Strapi Admin (:1337/admin) ── Publish ──► webhook ──► FastAPI
                                                               │ (đẩy sự kiện qua SSE)
                                                               └────► Frontend fetch lại nội dung
 ```
+
+**Kiến trúc BFF (chốt 24/11/2026, theo yêu cầu của tran): trình duyệt chỉ
+nói chuyện với Next.js.** Mọi gọi nghiệp vụ (lead, OTP, newsletter,
+contact, search, suggest, SSE, đăng nhập Google) đi qua route handler
+`src/app/api/backend/[...path]/route.ts` trên cùng origin — trình duyệt
+không bao giờ gọi thẳng FastAPI hay Strapi. `src/lib/api.ts` tự chọn
+base: trình duyệt → `/api/backend`, phía server → `BACKEND_URL`
+(biến server-only, xem mục 4). Ảnh CMS đi qua `next/image` (`/_next/image`),
+không `<img src>` thẳng sang Strapi. CSP `connect-src 'self'`.
 
 Quy tắc đã chốt:
 
@@ -33,7 +41,8 @@ Quy tắc đã chốt:
 - **FastAPI + SQLite** lo nghiệp vụ: gợi ý chiến dịch, số liệu mạng lưới,
   heatmap phủ sóng, form Lead/Contact, đăng nhập Google cho người dùng cuối,
   vòng lặp realtime push full snapshot mỗi 30 giây (trễ tối đa 1 phút).
-- **Frontend gọi cả hai** (`src/lib/api.ts` tách 2 client). Auth tách bạch,
+- **Frontend gọi cả hai** — nhưng chỉ phía server: Strapi lấy nội dung,
+  FastAPI lo nghiệp vụ, qua BFF (xem sơ đồ trên). Auth tách bạch,
   không gộp JWT hai bên.
 - **FastAPI chạy ngoài Docker Compose** (API + dữ liệu thử nghiệm, cần thao
   tác trực tiếp file SQLite trên host). **Strapi + Postgres chạy trong
@@ -80,7 +89,7 @@ Biến môi trường (xem `.env.example`):
 
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
-| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8000` | Backend FastAPI. Để trống = chưa cấu hình → giao diện hiện trạng thái rỗng/lỗi. |
+| `BACKEND_URL` | `http://localhost:8000` | Backend FastAPI — biến **server-only** (không `NEXT_PUBLIC_*`), chỉ Next.js phía server và proxy `/api/backend` dùng. Để trống ở production = proxy trả 503 `BACKEND_NOT_CONFIGURED`. Local chạy host: `http://localhost:8000`; Frontend trong Docker: `http://host.docker.internal:8000`. |
 | `NEXT_PUBLIC_STRAPI_URL` | `http://localhost:1337` | Strapi CMS. Để trống = khối nội dung hiện trạng thái rỗng. |
 
 Kiểm tra:
@@ -91,7 +100,8 @@ npm run build    # phải pass; route hiện ra gồm /, /advertisers, /contact,
 ```
 
 Lưu ý: **chưa có backend thì các mục dữ liệu hiện empty/error state là đúng.**
-Nút đăng nhập Google đang disabled cho tới khi backend cấu hình xong auth.
+Nút đăng nhập Google luôn hiện; chưa cấu hình Google OAuth thì bấm vào
+backend trả 503 `AUTH_NOT_CONFIGURED`.
 
 ## 5. Backend FastAPI + SQLite (chạy trên host, ngoài Compose)
 
@@ -121,7 +131,8 @@ thêm/xoá/sửa dữ liệu thử nghiệm.
 
 ### 5.3. Hợp đồng API Frontend đang gọi
 
-Base URL: `NEXT_PUBLIC_API_BASE_URL`. Tất cả trả JSON. CORS phải mở cho
+Base URL: trình duyệt gọi `/api/backend` (cùng origin, proxy sang FastAPI);
+phía server gọi `BACKEND_URL`. Tất cả trả JSON. CORS phải mở cho
 `http://localhost:3000` (khi chạy local).
 
 | Method | Endpoint | Dùng ở đâu | Ghi chú |
@@ -155,7 +166,7 @@ Case study **không** qua backend này: Frontend lấy qua Strapi REST
   mỗi 60 giây.
 - **Số liệu tăng dần theo thời gian thực (tran 18/11/2026):** trước khi đẩy
   snapshot mỗi kỳ, backend cộng dồn số liệu vào SQLite (`app/growth.py`) —
-  Lượt kết nối +100.000/kỳ mặc định (`GROWTH_CONNECTIONS_PER_CYCLE`), reach /
+  Lượt kết nối +13/kỳ mặc định (`GROWTH_CONNECTIONS_PER_CYCLE`), reach /
   engagements / impressions/ngày / monthly tăng theo cùng tỉ lệ % so với
   tổng hiện tại, chia theo tỉ trọng từng thành phố. Số được lưu lại nên
   restart backend vẫn tiếp tục tăng; cột NULL giữ NULL (Vũng Tàu/Huế không
@@ -203,13 +214,16 @@ Còn 2 việc làm tay (không làm bằng code được):
 1. **Tạo OAuth client trên Google Cloud Console** (tài khoản Google của
    tran): tạo project → OAuth consent screen → Create OAuth client ID,
    loại Web application → Authorized redirect URI đúng bằng
-   `{PUBLIC_BASE_URL}/api/auth/google/callback` (local:
-   `http://localhost:8000/api/auth/google/callback`). Lấy Client ID và
+   `{FRONTEND_ORIGIN}/api/backend/auth/google/callback` (local:
+   `http://localhost:3100/api/backend/auth/google/callback`). Lấy Client ID và
    Client Secret.
 2. **Đặt vào `.env` của backend** (`BE_inventory/.env`):
    `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `JWT_SECRET` (giá trị ngẫu
-   nhiên, dài) và `PUBLIC_BASE_URL` phải khớp đúng redirect URI đã đăng ký
-   với Google — sai một ký tự Google cũng từ chối callback.
+   nhiên, dài) và `FRONTEND_ORIGINS` (danh sách origin, phần tử đầu là origin
+   dùng cho redirect) phải khớp đúng redirect URI đã đăng ký với Google —
+   sai một ký tự Google cũng từ chối callback. **Lưu ý: `JWT_SECRET` là
+   bắt buộc — backend từ chối khởi động nếu thiếu (fail-closed, 24/11/2026);
+   `PUBLIC_BASE_URL` đã bỏ, không dùng nữa.**
 
 Chưa cấu hình thì nút đăng nhập ở header hiện trạng thái disable rõ ràng,
 và `GET /api/auth/google` trả 503 `AUTH_NOT_CONFIGURED`. Editor đăng nhập
@@ -841,7 +855,120 @@ push nên nhánh này mang theo cả R1-1.
   (form/bản đồ/lead nhúng/socials/VCCI), responsive 360-1440 không
   tràn, Tab tới nút tìm kiếm, Web Vitals đạt, không console/pageerror
   mới. Lint 0 lỗi, tsc sạch, build pass. **R1 hoàn tất** (FE 1-54 trừ
-  FE 54 UAT của tran + BE 1-26) — chờ tran duyệt để push nhánh `r1-2`.
+  FE 54 UAT của tran + BE 1-26) — **đã push nhánh `r1-2` (FE 8089b8f1,
+  BE b2312575) và tran đã merge vào main (FE e046e64, BE 0867f77) ngày
+  24/11/2026.**
+
+### 6.18. Đóng gói + review + kiến trúc BFF (24/11/2026)
+
+Sau khi merge, tran yêu cầu đóng gói phần hiện tại: review 1 lượt tính năng
+chính, tìm bug, tối ưu code, hoàn thiện kiến trúc, cập nhật lại Plan.
+
+- **Kiến trúc BFF (theo yêu cầu của tran):** trình duyệt chỉ nói chuyện với
+  Next.js; Next.js gọi các dịch vụ phía sau. Xem sơ đồ mục 2. Proxy
+  `src/app/api/backend/[...path]/route.ts` (streaming, SSE chạy qua được,
+  `redirect: "manual"` để OAuth 307 tới trình duyệt, forward cookie +
+  set-cookie cho OAuth state). `BACKEND_URL` thay
+  `NEXT_PUBLIC_API_BASE_URL` (xóa khỏi `.env.example`, compose, `api.ts`).
+  CSP `connect-src 'self'`; ảnh CMS qua `next/image`; OAuth redirect URI
+  mới `{FRONTEND_ORIGIN}/api/backend/auth/google/callback` — **phải đăng ký
+  lại trên Google Cloud Console trước khi đăng nhập Google thật chạy lại**.
+- **Review BE + CMS (1 blocker, 6 major, 16 minor) — đã sửa + verify live:**
+  - **B1 (blocker):** `POST /api/leads/{id}/verify` cấp token cho lead đã
+    xác thực mà không cần OTP → bỏ nhánh này, verify luôn kiểm tra OTP;
+    resend là cách duy nhất lấy token mới (cooldown 60s + 5 mã/ngày vẫn giữ);
+    CRM chỉ queue đúng 1 lần ở lần xác thực đầu.
+  - **M1:** URL fallback của 26 solution hỏng (`/products//<slug>`) → sửa
+    generator, verify 32 item, 0 URL hỏng.
+  - **M2:** CV đọc hết file vào RAM trước khi kiểm tra size → pre-check
+    `Content-Length`, đọc theo chunk 64KB có giới hạn; file lỗi insert được
+    xóa (không còn file mồ côi); `file_path` lưu tương đối `cv/<uuid>.ext`.
+  - **M3:** OAuth `state` không kiểm tra + JWT trả qua URL → `state` lưu
+    cookie HttpOnly SameSite=Lax, callback đối chiếu (sai → 400
+    `OAUTH_STATE_MISMATCH`); kiểm tra `email_verified`; bỏ xin refresh token
+    không dùng. JWT vẫn trả qua `?auth_token=` (FE đọc rồi dọn khỏi URL ngay).
+  - **M4:** `JWT_SECRET` mặc định hardcode → **fail-closed: thiếu là backend
+    không khởi động**; trùng giá trị mẫu trong `.env.example` thì log cảnh báo
+    lớn. Webhook không secret thì log cảnh báo lúc boot.
+  - **M5/M6:** rate limit chỉ có ở `/api/leads` → thêm cho contact,
+    newsletter, event register, CV apply (theo email, 5/phút; CV 3/phút),
+    suggest (theo IP, 30/phút); module mới `app/rate_limit.py` — đọc
+    `X-Forwarded-For`, tự dọn bucket hết hạn. Lưu ý sau BFF mọi request tới
+    BE đều mang IP của proxy Next.js nên giới hạn theo IP trở thành giới hạn
+    toàn site — endpoint nào có email thì giới hạn theo email.
+  - **Minor đã sửa:** OTP so hash bằng `hmac.compare_digest`; ICS escape
+    RFC 5545 + tz lỗi trả None thay vì 500; `queue_lead_sync` lỗi không biến
+    verify thành công thành 500; index DB `leads(email)`, `lead_otps(lead_id)`,
+    `event_registrations(event_slug, email)`; `@app.on_event` → `lifespan`;
+    `requirements.txt` pin version (fastapi 0.163.2, uvicorn 0.54.0, pydantic
+    2.14.3, PyJWT 2.15.1, python-multipart 0.0.34); newsletter confirm với
+    `created_at` sai định dạng → 400 `TOKEN_EXPIRED` (fail-closed); Strapi
+    bootstrap thu hồi quyền public thừa + webhook cập nhật theo tên
+    `awing-backend` (không còn webhook mồ côi khi đổi URL); seed event có
+    agenda/speakers tiếng Anh riêng, sửa comment khoảng ngày bài viết,
+    cảnh báo seed dở dang (vi có, en thiếu), single draft-only không làm
+    `--force` lỗi; backfill phân trang qua 100.
+  - **Chưa sửa (ghi nhận):** N2 race dedupe/OTP (cần UNIQUE index +
+    transaction), N8 search index build lần đầu có thể chậm ~120s (không
+    deadline tổng), N9 SSE queue không giới hạn + CRM worker sync chặn event
+    loop (thiết kế single-worker), N5 validate schema lỏng (email pattern…),
+    N7 dead code còn lại (stats.py, email.py), N16 field schema chưa dùng
+    (`product.link`, `resource.file` — R2 cần `resource.file`).
+- **Review FE (2 blocker + 10 major + ~30 minor) — đã sửa + verify:**
+  - **B1:** `/locations` hiện "63/32" tỉnh (sai dữ liệu) → `/63`.
+  - **B2:** `/advertisers` + `/locations` mang canonical/title của trang chủ
+    → layout riêng từng segment với `pageMetadata()` đúng; `/components`
+    (docs nội bộ) + `/newsletter/confirm` thêm `robots: noindex`.
+  - **M1:** header 11 mục menu chết → nối link tới trang R1 thật (Reports/
+    Papers/Case Studies → `/resources?type=…`, Events → `/events`, News →
+    `/news`, Company → `/about`…`/careers`); tên sản phẩm/solution trong mega
+    menu + drawer thành link; 3 mục Data chưa có trang ở R1 gỡ khỏi menu
+    (thuộc R2) — cả header lẫn footer.
+  - **M2:** mega menu tự đóng khi bấm vào trong → `navRef` chuyển lên
+    `<header>` (bao cả mega menu).
+  - **M3+M4:** Modal/Drawer không cuộn được + không focus trap → hook dùng
+    chung `useFocusTrap` (Tab quay vòng, Escape, trả focus về nút mở),
+    dialog/panel `max-h + overflow-y-auto`; 2 modal cũ (AdvertiserAuthModal,
+    FormatPreviewModal) chuyển sang `ui/Modal` (có Escape + focus trap).
+  - **M5:** dropdown điều hướng bằng phím mũi tên (ArrowDown/Up/Home/End);
+    `aria-haspopup="menu"` ở Header + AuthSession.
+  - **M6:** JSON-LD JobPosting `datePosted` lấy bằng deadline → bỏ trường
+    này (chưa có ngày đăng thật); type lạ hiện đúng giá trị gốc.
+  - **M7:** sitemap chỉ có 4 route → sinh động từ Strapi (products +
+    solutions, resources, events, news, careers, case studies) + 17 route
+    tĩnh; `lastModified` từ ngày thật.
+  - **M9+M10:** nhãn "Email *" dùng key `form.email` theo locale; khối case
+    study ở trang solution thành link tới `/case-studies/[slug]`.
+  - **Minor đã sửa:** SearchOverlay `aria-controls` chỉ gắn khi có danh
+    sách; Tabs có id/`aria-controls` + tabpanel (HomeHero, /components);
+    Pagination/ServerPagination nhận `ariaLabel` theo locale; "—%" ở
+    AdFormatCatalog; `nav.trusted` en "Trusted by"; BlockRenderer bỏ khung
+    "chưa hỗ trợ" (trả null như `mapStrapiBlocks`); `todayIso()` theo giờ VN;
+    sự kiện đang diễn ra vẫn "sắp tới" (so endDate), `eventStatus` chỉ gắn
+    khi sắp tới; `/resources` sort mới nhất phía Strapi; home chỉ fetch 3 bài
+    mới nhất mỗi loại (trước 200/100/100); ContactInfo thành link `tel:`;
+    Button disabled + href chặn click (aria-disabled); Footer bỏ chip
+    awing.global R4 + năm bản quyền động; RichText giữ thứ bậc h1/h2/h3 +
+    id trùng tên phân biệt; `decodePayload` bù padding base64url;
+    TurnstileWidget `remove()` khi unmount; trang /search báo lỗi khi tab
+    lỗi; trục Y biểu đồ thành phố động; `ProductColor` chỉ định nghĩa một
+    nơi (product-theme); ContentCard một link duy nhất; Link "Tìm hiểu ngay"
+    ra khỏi vùng button ở AdFormatCard; h1 /locations vào trong `<main>`;
+    file .ics phía trình duyệt thêm DTSTAMP + escape RFC 5545; lỗi
+    tên/công ty trống có thông báo riêng; ngày cập nhật snapshot định dạng
+    theo locale; StatsCard/ContentCard bỏ `"use client"` thừa; thêm E2E
+    `header-links.spec.ts` (không còn mục chết, link điều hướng đúng, phím
+    mũi tên trong dropdown).
+  - **Không sửa (ghi nhận + lý do):** xóa 4 component Home cũ mồ côi
+    (Hero/CampaignPromptForm/StatsStrip/LocationIntelligence) — cần tran
+    đồng ý; `aria-current` trên chip lọc giữ nguyên (link điều hướng trong
+    tập hợp, `aria-pressed` chỉ dành cho nút toggle); tooltip heatmap cho
+    bàn phím, `sizes` ảnh hero, `<html lang>` động — để đợt sau.
+- **Verify sau đóng gói (24/11):** tsc sạch, lint 0 lỗi / 3 warning cũ,
+  build pass, E2E 6/6, smoke 19 route 200, lead → OTP → verify → PATCH qua
+  proxy OK, rate limit (lead 5/phút/email, suggest 30/phút/IP) trả 429 đúng,
+  CV 6MB từ chối, OAuth state qua proxy (Set-Cookie HttpOnly, sai state →
+  400), bundle client không còn địa chỉ backend.
 
 ## 7. Thứ tự chạy toàn bộ (checklist)
 
@@ -875,7 +1002,7 @@ push nên nhánh này mang theo cả R1-1.
 | Triệu chứng | Nguyên nhân thường gặp | Cách xử lý |
 |---|---|---|
 | Trang chủ hiện empty/error state | Backend chưa chạy, hoặc SQLite chưa có dữ liệu | Chạy FastAPI (mục 5), thêm dữ liệu vào SQLite. Đây là hành vi đúng, không phải lỗi. |
-| Nút đăng nhập Google bị mờ | `NEXT_PUBLIC_API_BASE_URL` chưa cấu hình, hoặc backend chưa cấu hình Google OAuth | Cấu hình `.env.local`, kiểm tra `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` trong `.env` của repo `BE_inventory`. |
+| Nút đăng nhập Google báo lỗi | Backend chưa cấu hình Google OAuth, hoặc redirect URI chưa đăng ký | Kiểm tra `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` trong `.env` của repo `BE_inventory` và redirect URI `{FRONTEND_ORIGIN}/api/backend/auth/google/callback` đã đăng ký trên Google Cloud Console chưa. |
 | Frontend gọi Strapi trả 403 | Bootstrap chưa cấp quyền Public | Xem log Strapi (`docker compose logs strapi`): phải có dòng `[bootstrap] Đã cấp quyền public`. Nếu không có, kiểm tra lỗi bootstrap trong log; kiểm tra lại trong admin: Settings → Users & Permissions → Roles → Public phải có `find`/`findOne` cho các content type (13 loại từ R1-1). |
 | Frontend gọi Strapi trả 404 | Sai tên content type / chưa Publish bài / Single Type Home chưa có bản ghi | Kiểm tra slug trong Content-Type Builder; bài phải ở trạng thái Published. Riêng `/api/home` trả 404 khi chưa tạo bản Home nào là đúng (Strapi trả 404 cho Single Type rỗng). |
 | Publish trên Strapi mà Frontend không đổi | Webhook chưa tới FastAPI, hoặc Frontend chưa fetch lại | Kiểm tra webhook đã tạo chưa (log Strapi phải có `[bootstrap] Đã tạo webhook tới backend`) và URL webhook đúng chưa (mục 6.2); kiểm tra log FastAPI có nhận webhook không; thử reload trang để kiểm tra nội dung đã Publish chưa. |
@@ -888,10 +1015,15 @@ push nên nhánh này mang theo cả R1-1.
 ## 9. Ghi chú deploy (tóm tắt)
 
 - Frontend: deploy Vercel hoặc bất kỳ host Node nào; set 2 biến
-  `NEXT_PUBLIC_API_BASE_URL` và `NEXT_PUBLIC_STRAPI_URL` trỏ về domain thật.
-  Hai biến này nhúng vào bundle lúc build nên đổi giá trị là phải build lại
-  (deploy lại, hoặc `docker compose up --build` khi chạy Compose).
+  `BACKEND_URL` (server-only, trỏ về FastAPI) và `NEXT_PUBLIC_STRAPI_URL`
+  trỏ về domain thật. `NEXT_PUBLIC_STRAPI_URL` nhúng vào bundle lúc build
+  nên đổi giá trị là phải build lại (deploy lại, hoặc
+  `docker compose up --build` khi chạy Compose); `BACKEND_URL` đổi được
+  không cần build lại.
 - FastAPI: chạy trên VPS/host có Python, dùng systemd hoặc PM2 giữ tiến
-  trình; đặt sau reverse proxy (Nginx/Caddy) nếu cần HTTPS.
+  trình; đặt sau reverse proxy (Nginx/Caddy) nếu cần HTTPS. **Bắt buộc
+  `JWT_SECRET` trong `.env` — thiếu là backend không khởi động.** Chạy
+  sau reverse proxy thì bật `--proxy-headers` (rate limit lấy IP thật
+  từ `X-Forwarded-For`).
 - Strapi + Postgres: chạy bằng Compose trên cùng VPS (hoặc tách máy);
   backup định kỳ 2 volume `postgres-data` và `strapi-uploads`.

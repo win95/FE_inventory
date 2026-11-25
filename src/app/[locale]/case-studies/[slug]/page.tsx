@@ -31,7 +31,7 @@ export default async function CaseStudyDetailPage({ params }: { params: Promise<
   return (
     <ArticleTemplate
       locale={loc}
-      eyebrow="Case study"
+      eyebrow={translate(loc, "res.typeCaseStudy")}
       title={item.title}
       meta={[item.industry, item.metricLabel && item.metricValue !== null ? `${item.metricLabel}: ${item.metricValue}` : null].filter(Boolean).join(" · ") || null}
       shareUrl={localizedUrl(loc, `/case-studies/${slug}`)}
@@ -58,7 +58,7 @@ export default async function CaseStudyDetailPage({ params }: { params: Promise<
           {related.map((c) => (
             <ContentCard
               key={c.slug}
-              typeLabel="Case study"
+              typeLabel={translate(loc, "res.typeCaseStudy")}
               title={c.title}
               description={c.summary}
               href={withLocale(`/case-studies/${c.slug}`, loc)}

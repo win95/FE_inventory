@@ -10,8 +10,9 @@ chức năng: xem Plan AWING 24 trang (`awing-plan-phan-tich-chuc-nang`).
 - **Cấu trúc:** `src/app/` (route), `src/components/`, `src/lib/` (tầng gọi API duy nhất), alias `@/*` → `src/*`
 - **Dữ liệu (mô hình lai đã chốt):** nội dung blog / case study / product / home
   lấy qua Strapi CMS (`NEXT_PUBLIC_STRAPI_URL`); dữ liệu nghiệp vụ (gợi ý, số
-  liệu, heatmap, Lead/Contact) lấy qua backend FastAPI + SQLite
-  (`NEXT_PUBLIC_API_BASE_URL`), xem `.env.example`. Không mock, không số liệu
+  liệu, heatmap, Lead/Contact) lấy qua backend FastAPI + SQLite — trình duyệt
+  chỉ gọi Next.js qua `/api/backend` (BFF), phía server dùng `BACKEND_URL`,
+  xem `.env.example`. Không mock, không số liệu
   ghi cứng — database rỗng thì giao diện hiện trạng thái rỗng. Realtime:
   backend loop-push toàn bộ dữ liệu, trễ tối đa 1 phút; Frontend nhận qua SSE,
   mất SSE thì polling mỗi 60 giây.

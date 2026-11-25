@@ -253,14 +253,15 @@ export default function LocationsPage() {
     state.status === "ready" && state.stats
       ? [
           { label: t("stats.connections"), icon: "users" as const, value: formatInteger(state.stats.connections) },
-          { label: t("stats.provinces"), icon: "pin" as const, value: `${formatCompact(state.stats.provinces)}/32` },
+          { label: t("stats.provinces"), icon: "pin" as const, value: `${formatCompact(state.stats.provinces)}/63` },
           { label: t("stats.chains"), icon: "building" as const, value: `${formatCompact(state.stats.chains)}+` },
           { label: t("stats.venues"), icon: "zap" as const, value: formatCompact(state.stats.venues, true) },
         ]
       : [];
 
+  // h1 nằm trong <main> (trước đây dải tiêu đề nằm ngoài <main>).
   return (
-    <>
+    <main>
       <div className="border-b border-border bg-white py-8">
         <div className="mx-auto max-w-7xl px-6">
           <Link
@@ -320,7 +321,7 @@ export default function LocationsPage() {
             </div>
           )}
 
-          <main className="mx-auto max-w-7xl space-y-8 px-6 py-10">
+          <div className="mx-auto max-w-7xl space-y-8 px-6 py-10">
             <HeatmapCard
               provinces={state.coverage.provinces}
               onDrillDeeper={() => setAuthTitle(t("locations.modalDrill"))}
@@ -381,7 +382,7 @@ export default function LocationsPage() {
                           tickLine={false}
                         />
                         <YAxis
-                          domain={[0, 16]}
+                          domain={[0, (dataMax: number) => Math.max(16, Math.ceil(dataMax * 1.1))]}
                           ticks={[0, 4, 8, 12, 16]}
                           tick={{ fontSize: 11, fill: "rgba(0,0,0,0.3)" }}
                           axisLine={false}
@@ -484,11 +485,11 @@ export default function LocationsPage() {
                 </>
               )}
             </div>
-          </main>
+          </div>
         </>
       )}
 
       {authTitle && <AdvertiserAuthModal title={authTitle} onClose={() => setAuthTitle(null)} />}
-    </>
+    </main>
   );
 }

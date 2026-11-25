@@ -1,11 +1,11 @@
 // Footer R1-2 (FE 18, Docs §4.4): 5 cột — Thương hiệu | Sản phẩm | Dữ
 // liệu & Tài nguyên | Công ty + Hỗ trợ | Liên hệ (văn phòng, form nhận
-// tin, thị trường). Link tới trang chưa có (R1-3/R1-4) hiện mờ + không bấm
-// được, giữ quy ước "không nút chết"; chỉ /locations, /advertisers và
-// /contact là link thật. Form nhận tin gửi POST /api/newsletter (lưu email,
-// double opt-in ở BE 17 / R1-4). Link mạng xã hội (FE 48, SOC.01) lấy từ
-// single Global trong Strapi — có URL trong CMS thì là link thật, chưa có
-// thì hiện mờ. Ẩn trên /advertisers như trang mẫu Figma.
+// tin, thị trường). Mọi mục đều là link tới trang đã có thật (R1-3/R1-4);
+// 3 mục Data chưa có trang ở R1 đã gỡ (thuộc R2). Form nhận tin gửi POST
+// /api/newsletter (lưu email, double opt-in ở BE 17 / R1-4). Link mạng xã
+// hội (FE 48, SOC.01) lấy từ single Global trong Strapi — có URL trong CMS
+// thì là link thật, chưa có thì hiện mờ. Ẩn trên /advertisers như trang mẫu
+// Figma.
 "use client";
 
 import { useState } from "react";
@@ -30,7 +30,7 @@ const SOCIAL_LABELS: Record<string, string> = {
 
 const SOCIALS = ["Facebook", "LinkedIn", "YouTube", "Zalo OA", "TikTok"];
 
-export default function Footer({ socials = [] }: { socials?: CmsSocialLink[] }) {
+export default function Footer({ socials = [], year }: { socials?: CmsSocialLink[]; year: string }) {
   const { locale, setLocale, t } = useLocale();
   const pathname = usePathname();
   const [email, setEmail] = useState("");
@@ -115,10 +115,8 @@ export default function Footer({ socials = [] }: { socials?: CmsSocialLink[] }) 
         <nav aria-label={t("footer.dataResources")}>
           <p className="text-sm font-semibold text-ink">{t("footer.dataResources")}</p>
           <ul className="mt-3 space-y-2 text-sm text-muted">
-            <li>{link(t("nav.dataOverview"), null)}</li>
-            <li>{link(t("nav.dataExplorer"), null)}</li>
+            {/* Data: chỉ Bản đồ nhiệt có trang ở R1; 3 mục còn lại thuộc R2. */}
             <li>{link(t("nav.dataHeatmap"), withLocale("/locations", locale))}</li>
-            <li>{link(t("nav.dataMethodology"), null)}</li>
             <li>{link(t("nav.resReports"), withLocale("/resources?type=report", locale))}</li>
             <li>{link(t("nav.resPapers"), withLocale("/resources?type=paper", locale))}</li>
             <li>{link(t("nav.resCaseStudies"), withLocale("/resources?type=case-study", locale))}</li>
@@ -200,12 +198,6 @@ export default function Footer({ socials = [] }: { socials?: CmsSocialLink[] }) 
               <span className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-ink">
                 awing.vn
               </span>
-              <span
-                title={t("nav.noDestination")}
-                className="cursor-not-allowed rounded-full border border-border px-3 py-1 text-xs text-muted/50"
-              >
-                awing.global · ID (R4)
-              </span>
               <button
                 type="button"
                 onClick={() => setLocale(locale === "vi" ? "en" : "vi")}
@@ -218,7 +210,7 @@ export default function Footer({ socials = [] }: { socials?: CmsSocialLink[] }) 
         </div>
       </div>
       <div className="border-t border-divider py-4 text-center text-xs text-muted">
-        © 2026 AWING
+        © {year} AWING
       </div>
       <Modal open={cookieOpen} onClose={() => setCookieOpen(false)} title={t("footer.cookieTitle")}>
         <p className="text-sm leading-6 text-muted">{t("footer.cookieBody")}</p>

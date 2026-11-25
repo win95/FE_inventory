@@ -1,9 +1,11 @@
 // Drawer dùng chung (FE 7) — ngăn kéo trượt từ phải (mặc định) hoặc trái,
-// dùng cho menu mobile ở R1-2. Đóng bằng Escape + bấm nền, khóa cuộn body.
+// dùng cho menu mobile ở R1-2. Đóng bằng Escape + bấm nền, khóa cuộn body,
+// focus trap + trả focus về nút mở (useFocusTrap). Panel cuộn được khi
+// nội dung cao hơn viewport.
 "use client";
 
-import { useEffect, useRef } from "react";
 import { useLocale } from "../LocaleProvider";
+import { useFocusTrap } from "./useFocusTrap";
 
 interface DrawerProps {
   open: boolean;
@@ -15,22 +17,7 @@ interface DrawerProps {
 
 export default function Drawer({ open, onClose, title, side = "right", children }: DrawerProps) {
   const { t } = useLocale();
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    panelRef.current?.focus();
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [open, onClose]);
+  const panelRef = useFocusTrap<HTMLDivElement>(open, onClose);
 
   if (!open) return null;
   return (
@@ -42,7 +29,7 @@ export default function Drawer({ open, onClose, title, side = "right", children 
         aria-label={title}
         tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
-        className={`absolute top-0 bottom-0 w-full max-w-sm bg-white p-6 outline-none transition-transform ${
+        className={`absolute top-0 bottom-0 w-full max-w-sm overflow-y-auto bg-white p-6 outline-none ${
           side === "right" ? "right-0" : "left-0"
         }`}
       >

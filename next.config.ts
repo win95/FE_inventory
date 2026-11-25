@@ -27,9 +27,11 @@ function loadRedirects(): RedirectEntry[] {
 // FE 11 — security headers (Docs §8.5). CSP phải cho phép:
 // - 'unsafe-inline' cho script/style: Next.js chèn inline script lúc hydrate
 //   + JSON-LD Organization/WebSite là inline script; Tailwind cần inline style.
-// - connect-src tới origin của FastAPI + Strapi (đọc từ env lúc build/chạy;
-//   dev không có env thì thêm localhost). Không có origin thì fetch/SSE sang
-//   backend sẽ bị CSP chặn — kiểm tra bằng curl khi đổi env.
+// - connect-src chỉ 'self': kiến trúc BFF — trình duyệt chỉ nói chuyện với
+//   Next.js (API + SSE qua same-origin /api/backend/*); không còn fetch
+//   thẳng sang FastAPI/Strapi nên không cần mở origin ngoài.
+// - img-src 'self' + data: + avatar Google (lh3.googleusercontent.com):
+//   ảnh CMS đi qua /_next/image (same-origin) nên không cần origin Strapi.
 // - GTM chỉ thêm vào script-src khi đã cấu hình NEXT_PUBLIC_GTM_ID.
 function originOf(url: string | undefined): string | null {
   if (!url) return null;
@@ -41,19 +43,13 @@ function originOf(url: string | undefined): string | null {
 }
 
 function buildCsp(): string {
-  const apiOrigin = originOf(process.env.NEXT_PUBLIC_API_BASE_URL);
-  const strapiOrigin = originOf(process.env.NEXT_PUBLIC_STRAPI_URL);
-  const connectSrc = ["'self'", apiOrigin, strapiOrigin];
-  if (process.env.NODE_ENV !== "production" && !apiOrigin && !strapiOrigin) {
-    connectSrc.push("http://localhost:8000", "http://localhost:1337");
-  }
+  const connectSrc = ["'self'"];
   const scriptSrc = ["'self'", "'unsafe-inline'"];
   // React dev mode cần eval() để dựng lại callstack khi debug; production
   // không dùng eval nên chỉ mở 'unsafe-eval' khi NODE_ENV khác production.
   if (process.env.NODE_ENV !== "production") scriptSrc.push("'unsafe-eval'");
   if (process.env.NEXT_PUBLIC_GTM_ID) scriptSrc.push("https://www.googletagmanager.com");
-  const imgSrc = ["'self'", "data:"];
-  if (strapiOrigin) imgSrc.push(strapiOrigin);
+  const imgSrc = ["'self'", "data:", "https://lh3.googleusercontent.com"];
   return [
     "default-src 'self'",
     `script-src ${scriptSrc.join(" ")}`,

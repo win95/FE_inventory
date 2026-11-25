@@ -8,12 +8,14 @@ export default function ServerPagination({
   hrefFor,
   prevLabel,
   nextLabel,
+  ariaLabel = "Pagination",
 }: {
   page: number;
   totalPages: number;
   hrefFor: (page: number) => string;
   prevLabel: string;
   nextLabel: string;
+  ariaLabel?: string;
 }) {
   if (totalPages <= 1) return null;
   const nums = Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -22,7 +24,7 @@ export default function ServerPagination({
   // FE 52: cho phép xuống dòng trên mobile — 10 nút trang + Trước/Sau
   // rộng 524px, tràn ở 360px nếu giữ một hàng.
   return (
-    <nav aria-label="Pagination" className="flex flex-wrap items-center justify-center gap-1.5">
+    <nav aria-label={ariaLabel} className="flex flex-wrap items-center justify-center gap-1.5">
       {page > 1 ? (
         <Link href={hrefFor(page - 1)} className={btn}>
           {prevLabel}

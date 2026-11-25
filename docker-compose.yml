@@ -55,13 +55,16 @@ services:
     build:
       context: .
       args:
-        # NEXT_PUBLIC_* nhúng vào bundle lúc build; phải là địa chỉ mà
-        # TRÌNH DUYỆT người dùng gọi được (localhost khi chạy local).
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+        # NEXT_PUBLIC_* nhúng vào bundle lúc build; NEXT_PUBLIC_STRAPI_URL
+        # chỉ dùng phía server (remotePatterns + URL media) nên giá trị
+        # localhost ở đây vẫn đúng khi build trong Compose.
         NEXT_PUBLIC_STRAPI_URL: ${NEXT_PUBLIC_STRAPI_URL:-http://localhost:1337}
     environment:
       # SSR trong container gọi Strapi qua tên service (localhost là chính container).
       STRAPI_INTERNAL_URL: http://strapi:1337
+      # Backend FastAPI chạy trên host (ngoài Compose) — FE gọi qua proxy
+      # /api/backend/* phía server. Không còn NEXT_PUBLIC_API_BASE_URL.
+      BACKEND_URL: http://host.docker.internal:8000
     restart: unless-stopped
     ports:
       - "3000:3000"

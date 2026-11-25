@@ -12,6 +12,7 @@ import {
   websiteJsonLd,
 } from "@/lib/seo";
 import { fetchGlobal } from "@/lib/strapi";
+import { todayIso } from "@/lib/format";
 
 // Layout cho mọi trang theo locale (/vi, /en — Docs §4.2, FE 4).
 // Locale không hợp lệ → 404 (middleware đã chuyển đường dẫn không tiền tố
@@ -30,6 +31,14 @@ async function getGlobal(locale: Locale) {
   "use cache";
   cacheTag("strapi:global");
   return fetchGlobal(locale).catch(() => null);
+}
+
+// Năm bản quyền: tính trong "use cache" — new Date() trực tiếp trong
+// layout sẽ bị prerender chặn ở các trang tĩnh (customers, products...),
+// còn giá trị cache ở build thì ổn định (năm chỉ đổi khi build lại).
+async function getYear() {
+  "use cache";
+  return todayIso().slice(0, 4);
 }
 
 export function generateStaticParams() {
@@ -64,6 +73,7 @@ export default async function LocaleLayout({
   // Link mạng xã hội (FE 48) lấy từ single Global — Strapi lỗi thì footer
   // giữ nút mờ, layout không crash.
   const global = await getGlobal(locale as Locale);
+  const year = await getYear();
   return (
     <LocaleProvider locale={locale as Locale}>
       <script
@@ -73,7 +83,7 @@ export default async function LocaleLayout({
         }}
       />
       <SiteChrome>{children}</SiteChrome>
-      <Footer socials={global?.socialLinks ?? []} />
+      <Footer socials={global?.socialLinks ?? []} year={year} />
       <ToastViewport />
     </LocaleProvider>
   );

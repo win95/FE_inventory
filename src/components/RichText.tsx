@@ -21,27 +21,44 @@ export function headingId(text: string): string {
 export function extractHeadings(text: string): Heading[] {
   if (!text) return [];
   const out: Heading[] = [];
+  const seen = new Map<string, number>();
   for (const para of text.split(/\n\s*\n/)) {
     const line = para.trim();
     const m = /^(#{1,3})\s+(.+)$/.exec(line);
-    if (m) out.push({ id: headingId(m[2]), level: m[1].length, text: m[2].trim() });
+    if (!m) continue;
+    const base = headingId(m[2]);
+    // Hai heading trùng tên thì id phải khác nhau (không trùng id trong DOM).
+    const n = (seen.get(base) ?? 0) + 1;
+    seen.set(base, n);
+    out.push({ id: n === 1 ? base : `${base}-${n}`, level: m[1].length, text: m[2].trim() });
   }
   return out;
 }
 
 export default function RichText({ text }: { text: string }) {
   if (!text) return null;
+  const headings = extractHeadings(text);
+  let headingIndex = 0;
   return (
     <div className="max-w-3xl space-y-4 text-base leading-7 text-ink">
       {text.split(/\n\s*\n/).map((para, i) => {
         const line = para.trim();
         const m = /^(#{1,3})\s+(.+)$/.exec(line);
         if (m) {
-          const id = headingId(m[2]);
+          // Giữ đúng thứ bậc heading (# → h1, ## → h2, ### → h3) thay vì
+          // render mọi cấp thành h2; id lấy từ extractHeadings để khớp mục lục.
+          const heading = headings[headingIndex++];
+          const Tag = `h${m[1].length}` as "h1" | "h2" | "h3";
+          const size =
+            m[1].length === 1
+              ? "pt-4 font-display text-3xl font-black text-ink"
+              : m[1].length === 2
+                ? "pt-4 font-display text-2xl font-bold text-ink"
+                : "pt-4 font-display text-xl font-bold text-ink";
           return (
-            <h2 key={i} id={id} className="scroll-mt-24 pt-4 font-display text-2xl font-bold text-ink">
+            <Tag key={i} id={heading?.id} className={`scroll-mt-24 ${size}`}>
               {m[2].trim()}
-            </h2>
+            </Tag>
           );
         }
         return <p key={i}>{line}</p>;

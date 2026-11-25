@@ -20,7 +20,8 @@ export const STRAPI_BASE_URL =
 // Địa chỉ gọi API Strapi. Phía server (SSR trong container Docker) thì
 // localhost:1337 là chính container frontend, không tới được Strapi — dùng
 // STRAPI_INTERNAL_URL (vd http://strapi:1337 trong docker compose) nếu có.
-// Trình duyệt và URL media vẫn dùng NEXT_PUBLIC_STRAPI_URL.
+// URL media dựng từ base này rồi phục vụ qua /_next/image — trình duyệt
+// không gọi thẳng Strapi.
 function strapiFetchBase(): string {
   if (typeof window === "undefined") {
     const internal = process.env.STRAPI_INTERNAL_URL?.replace(/\/$/, "");
@@ -50,6 +51,9 @@ export interface StrapiListOptions {
   /** Trang (mặc định 1). Strapi giới hạn pageSize tối đa 100 nên danh sách
    * dài (118 bài News) phải đọc nhiều trang rồi nối lại. */
   page?: number;
+  /** Sắp xếp phía Strapi, vd "publishedDate:desc" — bắt buộc khi chỉ lấy
+   * vài mục mới nhất (fetch limit nhỏ rồi sort trong bộ nhớ sẽ sai). */
+  sort?: string;
   /** Populate sâu 1 cấp trong dynamic zone / component, vd. ["blocks"]:
    * Strapi chỉ trả component trong DZ khi populate=blocks, còn các
    * repeatable lồng trong đó (items/steps) thì KHÔNG — phải thêm
@@ -77,12 +81,13 @@ function appendPopulate(params: URLSearchParams, populate?: string, deepPopulate
 
 export async function strapiList<T>(
   collection: string,
-  { locale, market, populate, tag, pageSize, page, deepPopulate }: StrapiListOptions,
+  { locale, market, populate, tag, pageSize, page, deepPopulate, sort }: StrapiListOptions,
 ): Promise<T[]> {
   if (!isStrapiConfigured()) return [];
   const params = new URLSearchParams({ locale });
   appendPopulate(params, populate, deepPopulate);
   if (market) params.set("filters[market][$eq]", market);
+  if (sort) params.set("sort", sort);
   if (pageSize) params.set("pagination[pageSize]", String(pageSize));
   if (page && page > 1) params.set("pagination[page]", String(page));
   const init: RequestInit & { next?: { tags: string[] } } = {};
@@ -584,11 +589,12 @@ export async function fetchAdFormats(locale: Locale = "vi"): Promise<CmsAdFormat
   }));
 }
 
-export async function fetchResources(locale: Locale = "vi", limit = 100): Promise<CmsResource[]> {
+export async function fetchResources(locale: Locale = "vi", limit = 100, sort?: string): Promise<CmsResource[]> {
   const items = await strapiList<StrapiResourceItem>("resources", {
     locale,
     tag: "strapi:resources",
-    pageSize: 100,
+    pageSize: Math.min(limit, 100),
+    sort,
   });
   return items.slice(0, limit).map((item) => ({
     title: item.title ?? "",
@@ -601,12 +607,13 @@ export async function fetchResources(locale: Locale = "vi", limit = 100): Promis
   }));
 }
 
-export async function fetchEvents(locale: Locale = "vi", limit = 100): Promise<CmsEvent[]> {
+export async function fetchEvents(locale: Locale = "vi", limit = 100, sort?: string): Promise<CmsEvent[]> {
   const items = await strapiList<StrapiEventItem>("events", {
     locale,
     populate: "agenda,speakers",
     tag: "strapi:events",
-    pageSize: 100,
+    pageSize: Math.min(limit, 100),
+    sort,
   });
   return items.slice(0, limit).map((item) => ({
     title: item.title ?? "",
@@ -626,9 +633,11 @@ export async function fetchEvents(locale: Locale = "vi", limit = 100): Promise<C
   }));
 }
 
-export async function fetchArticles(locale: Locale = "vi", limit = 100): Promise<CmsArticle[]> {
+export async function fetchArticles(locale: Locale = "vi", limit = 100, sort?: string): Promise<CmsArticle[]> {
   // Strapi giới hạn pageSize tối đa 100/trang — 118 bài cần đọc 2 trang.
-  const PAGE = 100;
+  // Limit nhỏ (vd. showcase ở home chỉ cần 3 bài mới nhất) thì đọc đúng
+  // từng đó, không đọc cả 100 rồi cắt trong bộ nhớ.
+  const PAGE = Math.min(limit, 100);
   const items: StrapiArticleItem[] = [];
   for (let p = 1; items.length < limit; p++) {
     const chunk = await strapiList<StrapiArticleItem>("articles", {
@@ -636,6 +645,7 @@ export async function fetchArticles(locale: Locale = "vi", limit = 100): Promise
       tag: "strapi:articles",
       pageSize: PAGE,
       page: p,
+      sort,
     });
     items.push(...chunk);
     if (chunk.length < PAGE) break;

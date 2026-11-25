@@ -16,7 +16,9 @@ services:
     command: ["npx", "next", "dev", "-H", "0.0.0.0", "-p", "3000"]
     environment:
       NODE_ENV: development
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+      # Backend FastAPI chạy trên host — FE gọi qua proxy /api/backend/*
+      # phía server (host.docker.internal từ trong container ra host).
+      BACKEND_URL: http://host.docker.internal:8000
       NEXT_PUBLIC_STRAPI_URL: ${NEXT_PUBLIC_STRAPI_URL:-http://localhost:1337}
       # SSR trong container gọi Strapi qua tên service (localhost là chính container).
       STRAPI_INTERNAL_URL: http://strapi:1337

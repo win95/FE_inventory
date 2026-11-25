@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { API_BASE_URL, isBackendConfigured } from "@/lib/api";
 import {
   AUTH_CHANGE_EVENT,
   clearToken,
@@ -81,23 +80,11 @@ function AuthSessionInner() {
     );
   }
 
-  // Kiểu nút giống nút EN trên header theo trang mẫu Figma: bo 4px,
-  // viền border, chữ muted.
-  if (isBackendConfigured()) {
-    return (
-      <SignInMenu />
-    );
-  }
-
+  // Nút đăng nhập luôn hiện: đăng nhập Google đi qua proxy same-origin
+  // /api/backend (route handler Next.js); backend chưa chạy thì proxy trả
+  // lỗi rõ ràng thay vì mờ nút.
   return (
-    <button
-      type="button"
-      disabled
-      title={t("auth.googleUnavailable")}
-      className="cursor-not-allowed rounded border border-border px-2.5 py-1.5 text-sm text-muted/50"
-    >
-      {t("auth.signInGoogle")}
-    </button>
+    <SignInMenu />
   );
 }
 
@@ -129,7 +116,7 @@ function SignInMenu() {
       <button
         type="button"
         aria-expanded={open}
-        aria-haspopup="true"
+        aria-haspopup="menu"
         onClick={() => setOpen((prev) => !prev)}
         className="rounded border border-border px-2.5 py-1.5 text-sm text-muted transition-colors hover:text-ink"
       >
@@ -143,8 +130,11 @@ function SignInMenu() {
           >
             {t("nav.signInCustomer")}
           </span>
+          {/* OAuth phải là điều hướng đầy đủ của trình duyệt (không prefetch,
+              không client-side routing): <Link> sẽ prefetch URL đăng nhập. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a
-            href={`${API_BASE_URL}/api/auth/google`}
+            href="/api/backend/api/auth/google"
             onClick={() => setOpen(false)}
             className="block px-4 py-2.5 text-sm text-muted hover:bg-surface hover:text-ink"
           >

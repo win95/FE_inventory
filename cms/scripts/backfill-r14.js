@@ -32,8 +32,21 @@ async function main() {
   const appContext = await compileStrapi();
   const app = await createStrapi(appContext).load();
   try {
+    // Lấy hết theo trang (limit 100/trang): dữ liệu tăng quá 100 thì
+    // findMany một lần sẽ bỏ sót.
+    async function fetchAll(uid) {
+      const out = [];
+      let start = 0;
+      for (;;) {
+        const page = await app.documents(uid).findMany({ locale: 'vi', status: 'published', limit: 100, start });
+        out.push(...page);
+        if (page.length < 100) break;
+        start += page.length;
+      }
+      return out;
+    }
     let n = 0;
-    const cases = await app.documents('api::case-study.case-study').findMany({ locale: 'vi', status: 'published', limit: 100 });
+    const cases = await fetchAll('api::case-study.case-study');
     for (const d of cases) {
       const slug = CASE_STUDY_SLUGS[d.title];
       if (!slug) { console.log(`[backfill] case-study không khớp: ${d.title}`); continue; }
@@ -44,7 +57,7 @@ async function main() {
     console.log(`[backfill] case-studies: ${n} cập nhật slug`);
 
     let m = 0;
-    const resources = await app.documents('api::resource.resource').findMany({ locale: 'vi', status: 'published', limit: 100 });
+    const resources = await fetchAll('api::resource.resource');
     for (const d of resources) {
       const industry = RESOURCE_INDUSTRY[d.slug];
       if (!industry) { console.log(`[backfill] resource không khớp: ${d.slug}`); continue; }

@@ -21,5 +21,12 @@ export function nowMs(): number {
 }
 
 export function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  // Ngày theo giờ Việt Nam (Asia/Ho_Chi_Minh), không phải UTC — so sánh
+  // deadline/hạn chót quanh nửa đêm giờ VN lệch vài giờ nếu dùng UTC.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }

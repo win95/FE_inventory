@@ -36,8 +36,16 @@ export default async function EventDetailPage({ params }: { params: Promise<{ lo
   if (!item) notFound();
 
   const start = item.startDate ? new Date(item.startDate).getTime() : 0;
-  const upcoming = start >= nowMs();
-  const modeLabel = item.mode ? translate(loc, MODE_LABEL[item.mode] ?? "events.modeOffline") : "";
+  // Sự kiện đang diễn ra (đã bắt đầu, chưa kết thúc) vẫn là "sắp tới" —
+  // so với endDate khi có, không so với startDate.
+  const end = item.endDate ? new Date(item.endDate).getTime() : start;
+  const upcoming = end >= nowMs();
+  // Mode lạ thì hiện đúng giá trị gốc, không đoán thành offline.
+  const modeLabel = item.mode
+    ? MODE_LABEL[item.mode]
+      ? translate(loc, MODE_LABEL[item.mode])
+      : item.mode
+    : "";
 
   return (
     <main>
@@ -51,7 +59,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ lo
             description: item.summary,
             startDate: item.startDate ?? undefined,
             endDate: item.endDate ?? undefined,
-            eventStatus: "https://schema.org/EventScheduled",
+            // Chỉ gắn eventStatus khi sự kiện còn sắp tới — sự kiện đã qua
+            // không có trạng thái "Scheduled" hợp lệ trong schema.org.
+            ...(upcoming ? { eventStatus: "https://schema.org/EventScheduled" } : {}),
             eventAttendanceMode:
               item.mode === "online"
                 ? "https://schema.org/OnlineEventAttendanceMode"

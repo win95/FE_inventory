@@ -45,7 +45,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ loca
             "@type": "JobPosting",
             title: item.title,
             description: item.description,
-            datePosted: item.deadline ?? undefined,
+            // datePosted phải là ngày đăng tin thật — Job chưa có trường đó
+            // nên bỏ khỏi schema (gán bằng deadline là ngày tương lai,
+            // Google có thể flag JobPosting không hợp lệ).
             validThrough: item.deadline ?? undefined,
             employmentType: item.type === "full-time" ? "FULL_TIME" : item.type === "contract" ? "CONTRACTOR" : "INTERN",
             hiringOrganization: { "@type": "Organization", name: "AWING" },
@@ -74,7 +76,8 @@ export default async function JobDetailPage({ params }: { params: Promise<{ loca
             </div>
             <div className="flex gap-2">
               <dt className="font-semibold text-ink">{translate(loc, "jobs.typeLabel")}:</dt>
-              <dd>{translate(loc, TYPE_LABEL[item.type] ?? "jobs.typeFullTime")}</dd>
+              {/* Type lạ thì hiện đúng giá trị gốc, không đoán thành full-time. */}
+              <dd>{TYPE_LABEL[item.type] ? translate(loc, TYPE_LABEL[item.type]) : item.type}</dd>
             </div>
             <div className="flex gap-2">
               <dt className="font-semibold text-ink">{translate(loc, "jobs.deadlineLabel")}:</dt>
