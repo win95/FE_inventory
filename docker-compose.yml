@@ -25,6 +25,10 @@ services:
       retries: 10
 
   strapi:
+    # Linux: host.docker.internal không có sẵn, map tới gateway của host
+    # để container gọi được FastAPI chạy trên máy (cổng 8000).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     build: ./cms
     restart: unless-stopped
     environment:
@@ -43,6 +47,7 @@ services:
       HOST: 0.0.0.0
       PORT: 1337
       STRAPI_WEBHOOK_URL: ${STRAPI_WEBHOOK_URL:-http://host.docker.internal:8000/api/webhooks/strapi}
+      STRAPI_WEBHOOK_SECRET: ${STRAPI_WEBHOOK_SECRET:-}
     volumes:
       - strapi-uploads:/opt/app/public/uploads
     ports:
@@ -52,6 +57,10 @@ services:
         condition: service_healthy
 
   frontend:
+    # Linux: host.docker.internal không có sẵn, map tới gateway của host
+    # để container gọi được FastAPI chạy trên máy (cổng 8000).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     build:
       context: .
       args:

@@ -94,43 +94,83 @@ async function grantPublicPermissions(strapi: Core.Strapi) {
   }
 }
 
+// Header gửi kèm webhook: Strapi chỉ gửi được header tĩnh (không ký HMAC
+// theo body) nên backend xác thực bằng `Authorization: Bearer <secret>`.
+// STRAPI_WEBHOOK_SECRET phải trùng giá trị với STRAPI_WEBHOOK_SECRET của BE.
+// Để trống thì không gửi header (BE cũng để trống thì nhận mọi POST).
+function webhookHeaders(): Record<string, string> {
+  const secret = process.env.STRAPI_WEBHOOK_SECRET?.trim();
+  return secret ? { Authorization: `Bearer ${secret}` } : {};
+}
+
+function sameHeaders(a: unknown, b: Record<string, string>) {
+  const current = (a && typeof a === 'object' ? a : {}) as Record<string, unknown>;
+  const keysA = Object.keys(current);
+  const keysB = Object.keys(b);
+  return keysA.length === keysB.length && keysB.every((k) => current[k] === b[k]);
+}
+
+// Webhook runner đã nạp webhook từ DB trước bootstrap của app, nên sau khi
+// tạo/sửa trong DB phải nạp lại vào runner — nếu không, thay đổi chỉ có
+// hiệu lực sau lần khởi động kế tiếp.
+async function refreshWebhookRunner(strapi: Core.Strapi, id: number) {
+  const store = strapi.get('webhookStore');
+  const runner = strapi.get('webhookRunner');
+  const webhook = await store.findWebhook(id);
+  if (webhook) {
+    runner.update(webhook);
+  }
+}
+
 async function ensureStrapiWebhook(strapi: Core.Strapi) {
   const url = process.env.STRAPI_WEBHOOK_URL;
   if (!url) {
     return;
   }
+  const headers = webhookHeaders();
   // UID đúng của Strapi 5 là 'strapi::webhook' (xem @strapi/core webhook-store).
   // Tìm theo tên 'awing-backend' (không theo URL): đổi STRAPI_WEBHOOK_URL
   // thì cập nhật webhook cũ thay vì để nó bắn về URL cũ + tạo thêm cái mới.
-  const named = await strapi.db
+  const named = (await strapi.db
     .query('strapi::webhook')
-    .findMany({ where: { name: 'awing-backend' } });
-  const current = named.find((w: { url: string }) => w.url === url);
-  if (current) {
-    return;
-  }
+    .findMany({ where: { name: 'awing-backend' } })) as {
+    id: number;
+    url: string;
+    headers: unknown;
+  }[];
   if (named.length > 0) {
-    const first = named[0] as { id: number };
+    const first = named.find((w) => w.url === url) ?? named[0];
+    for (const extra of named.filter((w) => w.id !== first.id)) {
+      await strapi.db.query('strapi::webhook').delete({ where: { id: extra.id } });
+      strapi.get('webhookRunner').remove({ id: extra.id });
+    }
+    if (first.url === url && sameHeaders(first.headers, headers)) {
+      return;
+    }
     await strapi.db.query('strapi::webhook').update({
       where: { id: first.id },
-      data: { url, headers: {}, events: WEBHOOK_EVENTS, enabled: true },
+      data: { url, headers, events: WEBHOOK_EVENTS, enabled: true },
     });
-    for (const extra of named.slice(1) as { id: number }[]) {
-      await strapi.db.query('strapi::webhook').delete({ where: { id: extra.id } });
-    }
-    strapi.log.info(`[bootstrap] Đã cập nhật webhook tới backend: ${url}`);
+    await refreshWebhookRunner(strapi, first.id);
+    // Không log giá trị header (chứa secret).
+    strapi.log.info(
+      `[bootstrap] Đã cập nhật webhook tới backend: ${url} (xác thực Bearer: ${headers.Authorization ? 'bật' : 'tắt'})`
+    );
     return;
   }
-  await strapi.db.query('strapi::webhook').create({
+  const created = (await strapi.db.query('strapi::webhook').create({
     data: {
       name: 'awing-backend',
       url,
-      headers: {},
+      headers,
       events: WEBHOOK_EVENTS,
       enabled: true,
     },
-  });
-  strapi.log.info(`[bootstrap] Đã tạo webhook tới backend: ${url}`);
+  })) as { id: number };
+  await refreshWebhookRunner(strapi, created.id);
+  strapi.log.info(
+    `[bootstrap] Đã tạo webhook tới backend: ${url} (xác thực Bearer: ${headers.Authorization ? 'bật' : 'tắt'})`
+  );
 }
 
 export default {
