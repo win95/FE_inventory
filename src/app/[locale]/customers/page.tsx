@@ -2,13 +2,11 @@
 // R1 chưa có file logo thật) + testimonial + link tới case study (khi có).
 import type { Metadata } from "next";
 import Link from "next/link";
-import { connection } from "next/server";
 import { Breadcrumb } from "@/components/ui";
 import { fetchCustomers } from "@/lib/strapi";
 import { translate, withLocale, type Locale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/seo";
 
-export const instant = false;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -19,8 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: L
 export default async function CustomersPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  await connection();
-  const all = await fetchCustomers(loc);
+  const all = await fetchCustomers(loc, "force-cache");
   const shown = all.filter((c) => c.consent);
 
   return (

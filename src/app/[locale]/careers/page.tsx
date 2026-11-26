@@ -2,14 +2,12 @@
 // vị trí hết hạn (deadline < hôm nay) không hiện.
 import type { Metadata } from "next";
 import Link from "next/link";
-import { connection } from "next/server";
 import { Breadcrumb } from "@/components/ui";
 import { fetchJobs } from "@/lib/strapi";
 import { translate, withLocale, type DictKey, type Locale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/seo";
 import { formatDate, todayIso } from "@/lib/format";
 
-export const instant = false;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -28,12 +26,11 @@ export default async function CareersPage({
 }) {
   const { locale } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  await connection();
   const sp = await searchParams;
   const department = typeof sp.department === "string" ? sp.department : "";
   const location = typeof sp.location === "string" ? sp.location : "";
 
-  const all = await fetchJobs(loc);
+  const all = await fetchJobs(loc, "force-cache");
   const today = todayIso();
   const open = all.filter((j) => !j.deadline || j.deadline >= today);
   const departments = [...new Set(open.map((j) => j.department).filter(Boolean))].sort();

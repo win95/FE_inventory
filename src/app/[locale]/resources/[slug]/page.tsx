@@ -1,7 +1,6 @@
 // Chi tiết tài nguyên (R1-4, FE 34): mẫu T.Article + schema Article.
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { connection } from "next/server";
 import ArticleTemplate from "@/components/ArticleTemplate";
 import ContentCard from "@/components/content/ContentCard";
 import { fetchResourceBySlug, fetchResources } from "@/lib/strapi";
@@ -9,12 +8,11 @@ import { translate, withLocale, type DictKey, type Locale } from "@/lib/i18n";
 import { localizedUrl, pageMetadata } from "@/lib/seo";
 import { formatDate } from "@/lib/format";
 
-export const instant = false;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale; slug: string }> }): Promise<Metadata> {
   const { locale, slug } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  const item = await fetchResourceBySlug(loc, slug).catch(() => null);
+  const item = await fetchResourceBySlug(loc, slug, "force-cache").catch(() => null);
   if (!item) return pageMetadata({ locale: loc, path: `/resources/${slug}`, title: "AWING", description: "" });
   return pageMetadata({ locale: loc, path: `/resources/${slug}`, title: `${item.title} — AWING`, description: item.summary });
 }
@@ -24,11 +22,10 @@ const TYPE_LABEL: Record<string, DictKey> = { report: "res.typeReport", paper: "
 export default async function ResourceDetailPage({ params }: { params: Promise<{ locale: Locale; slug: string }> }) {
   const { locale, slug } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  await connection();
-  const item = await fetchResourceBySlug(loc, slug);
+  const item = await fetchResourceBySlug(loc, slug, "force-cache");
   if (!item) notFound();
 
-  const related = (await fetchResources(loc)).filter((r) => r.slug !== slug && r.type === item.type).slice(0, 3);
+  const related = (await fetchResources(loc, 100, undefined, "force-cache")).filter((r) => r.slug !== slug && r.type === item.type).slice(0, 3);
   const meta = [formatDate(item.publishedDate, loc), item.industry].filter(Boolean).join(" · ");
   const typeLabel = translate(loc, TYPE_LABEL[item.type] ?? "res.typeReport");
 

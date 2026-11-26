@@ -12,10 +12,7 @@ import { PRODUCT_THEME } from "@/lib/product-theme";
 import { Breadcrumb } from "@/components/ui";
 import { applyBlockTitles, fetchProductBySlug } from "@/lib/strapi";
 import { translate, withLocale, type Locale } from "@/lib/i18n";
-import { connection } from "next/server";
 
-// Route chặn (blocking): dữ liệu CMS đọc ở mỗi request, không prerender.
-export const instant = false;
 import { breadcrumbJsonLd, localizedUrl, pageMetadata } from "@/lib/seo";
 
 export async function generateMetadata({
@@ -25,7 +22,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale, product: slug } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  const product = await fetchProductBySlug(loc, slug).catch(() => null);
+  const product = await fetchProductBySlug(loc, slug, "force-cache").catch(() => null);
   if (!product) return pageMetadata({ locale: loc, path: `/products/${slug}`, title: "AWING", description: "" });
   return pageMetadata({
     locale: loc,
@@ -42,8 +39,7 @@ export default async function ProductDetailPage({
 }) {
   const { locale, product: slug } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  await connection(); // Dừng prerender — đọc Strapi ở mỗi request.
-  const product = await fetchProductBySlug(loc, slug);
+  const product = await fetchProductBySlug(loc, slug, "force-cache");
   if (!product) notFound();
 
   const theme = PRODUCT_THEME[product.color];

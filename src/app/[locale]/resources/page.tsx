@@ -5,7 +5,6 @@
 // ở SETUP §6.16).
 import type { Metadata } from "next";
 import Link from "next/link";
-import { connection } from "next/server";
 import { Breadcrumb } from "@/components/ui";
 import ContentCard from "@/components/content/ContentCard";
 import ServerPagination from "@/components/ServerPagination";
@@ -14,7 +13,6 @@ import { translate, withLocale, type DictKey, type Locale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/seo";
 import { formatDate } from "@/lib/format";
 
-export const instant = false;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -35,7 +33,6 @@ export default async function ResourcesPage({
 }) {
   const { locale } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  await connection();
   const sp = await searchParams;
   const type = typeof sp.type === "string" ? sp.type : "";
   const industry = typeof sp.industry === "string" ? sp.industry : "";
@@ -43,7 +40,7 @@ export default async function ResourcesPage({
   const page = Math.max(1, Number(typeof sp.page === "string" ? sp.page : "1") || 1);
 
   // Danh sách sắp xếp theo ngày đăng mới nhất (sort phía Strapi).
-  const all = await fetchResources(loc, 100, "publishedDate:desc");
+  const all = await fetchResources(loc, 100, "publishedDate:desc", "force-cache");
   const industries = [...new Set(all.map((r) => r.industry).filter((x): x is string => Boolean(x)))].sort();
   const years = [...new Set(all.map((r) => (r.publishedDate ?? "").slice(0, 4)).filter(Boolean))].sort().reverse();
 

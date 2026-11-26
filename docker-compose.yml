@@ -7,6 +7,19 @@
 # mục 5, repo win95/BE_inventory). `docker compose up` thành công không có
 # nghĩa là FastAPI đang chạy, và ngược lại.
 services:
+  # P0 K8s FE + cache: Redis dùng chung cho Next Data Cache (L2). Chỉ là
+  # cache — mất dữ liệu = cache miss, FE tự build lại từ Strapi, không cần
+  # backup như DB. Local dev chạy 1 replica; lên K8s dùng StatefulSet
+  # (§5.4 thiết kế) hoặc managed Redis.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "2gb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+
   postgres:
     image: postgres:16
     restart: unless-stopped
@@ -74,12 +87,19 @@ services:
       # Backend FastAPI chạy trên host (ngoài Compose) — FE gọi qua proxy
       # /api/backend/* phía server. Không còn NEXT_PUBLIC_API_BASE_URL.
       BACKEND_URL: http://host.docker.internal:8000
+      # P0 K8s FE + cache: Redis dùng chung cho Next Data Cache (L2).
+      # Trong Compose thì gọi qua tên service redis; local không Compose
+      # thì để redis://localhost:6379 (xem .env.example).
+      PNCH_REDIS_URL: ${PNCH_REDIS_URL:-redis://redis:6379}
+      PNCH_CACHE_APP: ${PNCH_CACHE_APP:-awing}
     restart: unless-stopped
     ports:
       - "3000:3000"
     depends_on:
       - strapi
+      - redis
 
 volumes:
   postgres-data:
   strapi-uploads:
+  redis-data:

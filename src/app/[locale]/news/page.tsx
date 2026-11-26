@@ -2,7 +2,6 @@
 // phân trang 12/trang, mới nhất trước. Chuyên mục lấy từ dữ liệu thật.
 import type { Metadata } from "next";
 import Link from "next/link";
-import { connection } from "next/server";
 import { Breadcrumb } from "@/components/ui";
 import ContentCard from "@/components/content/ContentCard";
 import ServerPagination from "@/components/ServerPagination";
@@ -11,7 +10,6 @@ import { translate, withLocale, type Locale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/seo";
 import { formatDate } from "@/lib/format";
 
-export const instant = false;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -30,12 +28,11 @@ export default async function NewsPage({
 }) {
   const { locale } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  await connection();
   const sp = await searchParams;
   const category = typeof sp.category === "string" ? sp.category : "";
   const page = Math.max(1, Number(typeof sp.page === "string" ? sp.page : "1") || 1);
 
-  const all = await fetchArticles(loc, 200);
+  const all = await fetchArticles(loc, 200, undefined, "force-cache");
   const categories = [...new Set(all.map((a) => a.category).filter((x): x is string => Boolean(x)))].sort();
   const sorted = [...all].sort((a, b) => (b.publishedDate ?? "").localeCompare(a.publishedDate ?? ""));
   const filtered = category ? sorted.filter((a) => a.category === category) : sorted;

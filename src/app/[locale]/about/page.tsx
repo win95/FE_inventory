@@ -4,7 +4,6 @@
 // không có loại About) nên chỉ hiện ghi chú chờ cập nhật — không bịa tên
 // người hay cột mốc (ghi chú ở SETUP §6.16).
 import type { Metadata } from "next";
-import { connection } from "next/server";
 import { Breadcrumb } from "@/components/ui";
 import ContactInfo from "@/components/ContactInfo";
 import StatsCard from "@/components/content/StatsCard";
@@ -14,7 +13,6 @@ import { translate, withLocale, type Locale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/seo";
 import { formatDate } from "@/lib/format";
 
-export const instant = false;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -25,8 +23,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: L
 export default async function AboutPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  await connection();
-  const [home, snapshot] = await Promise.all([fetchHome(loc), fetchDataSnapshot(loc)]);
+  const [home, snapshot] = await Promise.all([fetchHome(loc, "force-cache"), fetchDataSnapshot(loc, "force-cache")]);
 
   return (
     <main>

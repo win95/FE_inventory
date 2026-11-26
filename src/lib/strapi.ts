@@ -38,6 +38,11 @@ export interface StrapiListResponse<T> {
   data?: T[];
 }
 
+/** Chế độ cache của fetch Strapi: "force-cache" cho trang tĩnh (đọc qua
+ * Next Data Cache, làm mới bằng tag khi publish), "no-store" cho trang
+ * động (đọc mới mỗi request). Không đặt thì giữ mặc định của Next. */
+export type StrapiCacheMode = "force-cache" | "no-store";
+
 export interface StrapiListOptions {
   locale: Locale;
   /** Lọc theo trường market (chỉ dùng từ BE 5, khi Strapi đã có trường này). */
@@ -46,6 +51,11 @@ export interface StrapiListOptions {
   populate?: string;
   /** Tag cache cho revalidate, vd "strapi:case-studies". Chỉ có tác dụng phía server. */
   tag?: string;
+  /** Chế độ cache của fetch (xem StrapiCacheMode). Đặt "force-cache"
+   * thì fetch còn gắn `next.revalidate = 3600` (profile `content` trong
+   * next.config.ts) để làm mới nền mỗi giờ — tag invalidation khi publish
+   * vẫn là cơ chế làm mới chính. */
+  cache?: StrapiCacheMode;
   /** Số mục tối đa (mặc định Strapi là 25 — phải đặt rõ cho danh sách dài, vd. 118 bài News). */
   pageSize?: number;
   /** Trang (mặc định 1). Strapi giới hạn pageSize tối đa 100 nên danh sách
@@ -59,6 +69,107 @@ export interface StrapiListOptions {
    * repeatable lồng trong đó (items/steps) thì KHÔNG — phải thêm
    * populate[blocks][populate]=* thì items/steps mới về. */
   deepPopulate?: string[];
+}
+
+// --- Single-flight + circuit breaker + timeout cho fetch Strapi -----------
+// (P0 K8s FE + cache, §6.2/§6.3 thiết kế). Đặt ở đây — không đặt trong
+// cache handler — vì handler không gọi origin: mọi lần đọc Strapi đều đi
+// qua strapiFetch dưới đây nên gộp + ngắt mạch ở đây là đủ.
+//
+// - Single-flight: nhiều request đồng thời cùng URL chỉ tạo 1 HTTP request
+//   thật, còn lại chờ chung kết quả (body đọc 1 lần rồi chia nhau qua
+//   Response mới dựng từ text).
+// - Circuit breaker: lỗi mạng/timeout/5xx liên tiếp thì ngừng gọi Strapi
+//   một lúc — tầng cache phục vụ bản cũ (hoặc trang hiện lỗi) thay vì treo
+//   chờ Strapi. 4xx không tính là lỗi mạch (404 single = "chưa có nội
+//   dung", không phải Strapi chết).
+// - Timeout: fetch Strapi quá 10 giây (env STRAPI_FETCH_TIMEOUT_MS) thì
+//   hủy — request không được treo theo Strapi chậm.
+const STRAPI_FETCH_TIMEOUT_MS = Number(process.env.STRAPI_FETCH_TIMEOUT_MS ?? 10000) || 10000;
+const BREAKER_FAILURE_THRESHOLD = 5; // Lỗi liên tiếp thì mở mạch.
+const BREAKER_COOLDOWN_MS = 30000; // Mở 30 giây rồi cho 1 request thử lại.
+const inflightStrapiFetch = new Map<string, Promise<{ status: number; text: string }>>();
+const strapiBreaker = { failures: 0, openedAt: 0, halfOpen: false };
+
+function isBreakerOpen(): boolean {
+  if (strapiBreaker.openedAt === 0) return false;
+  if (Date.now() - strapiBreaker.openedAt < BREAKER_COOLDOWN_MS) return true;
+  // Hết cooldown: cho đúng 1 request thử lại (half-open).
+  strapiBreaker.openedAt = 0;
+  strapiBreaker.halfOpen = true;
+  return false;
+}
+
+function noteStrapiSuccess(): void {
+  strapiBreaker.failures = 0;
+  strapiBreaker.openedAt = 0;
+  strapiBreaker.halfOpen = false;
+}
+
+function noteStrapiFailure(): void {
+  if (strapiBreaker.halfOpen) {
+    // Request thử lại thất bại → mở mạch ngay, không đợi đủ 5 lỗi.
+    strapiBreaker.halfOpen = false;
+    strapiBreaker.failures = BREAKER_FAILURE_THRESHOLD;
+    strapiBreaker.openedAt = Date.now();
+    return;
+  }
+  strapiBreaker.failures += 1;
+  if (strapiBreaker.failures >= BREAKER_FAILURE_THRESHOLD) {
+    strapiBreaker.openedAt = Date.now();
+  }
+}
+
+/**
+ * Fetch Strapi qua single-flight + circuit breaker + timeout. Trả về
+ * Response thật (dựng từ text đã đọc) để caller dùng như cũ (status,
+ * ok, json()). Mạch đang mở thì throw ApiError strapiUnreachable ngay
+ * (caller đã bắt lỗi này sẵn) — không gọi Strapi.
+ */
+async function strapiFetch(url: string, init: RequestInit, locale: Locale): Promise<Response> {
+  // Request giống hệt đang chạy thì chờ chung, kể cả khi mạch vừa mở.
+  const cacheMode = (init as { cache?: string }).cache ?? "";
+  const key = `${cacheMode}|${url}`;
+  const pending = inflightStrapiFetch.get(key);
+  if (pending) {
+    const shared = await pending;
+    return new Response(shared.text, { status: shared.status });
+  }
+  if (isBreakerOpen()) {
+    throw new ApiError(translate(locale, "api.strapiUnreachable"), 0);
+  }
+  const promise = (async () => {
+    let res: Response;
+    try {
+      res = await fetch(url, { ...init, signal: AbortSignal.timeout(STRAPI_FETCH_TIMEOUT_MS) });
+    } catch (error) {
+      // Timeout (AbortError) cũng là lỗi mạng — tính vào mạch.
+      noteStrapiFailure();
+      throw error;
+    }
+    const text = await res.text();
+    if (res.status >= 500) noteStrapiFailure();
+    else noteStrapiSuccess();
+    return { status: res.status, text };
+  })();
+  inflightStrapiFetch.set(key, promise);
+  try {
+    const shared = await promise;
+    return new Response(shared.text, { status: shared.status });
+  } finally {
+    inflightStrapiFetch.delete(key);
+  }
+}
+
+/** Gắn tag + revalidate nền cho fetch chạy phía server (xem StrapiListOptions.cache). */
+function strapiNextOptions(
+  tag: string | undefined,
+  cache: StrapiCacheMode | undefined,
+): { tags?: string[]; revalidate?: number } {
+  const nextOpts: { tags?: string[]; revalidate?: number } = {};
+  if (typeof window === "undefined" && tag) nextOpts.tags = [tag];
+  if (cache === "force-cache") nextOpts.revalidate = 3600;
+  return nextOpts;
 }
 
 
@@ -81,7 +192,7 @@ function appendPopulate(params: URLSearchParams, populate?: string, deepPopulate
 
 export async function strapiList<T>(
   collection: string,
-  { locale, market, populate, tag, pageSize, page, deepPopulate, sort }: StrapiListOptions,
+  { locale, market, populate, tag, cache, pageSize, page, deepPopulate, sort }: StrapiListOptions,
 ): Promise<T[]> {
   if (!isStrapiConfigured()) return [];
   const params = new URLSearchParams({ locale });
@@ -90,11 +201,13 @@ export async function strapiList<T>(
   if (sort) params.set("sort", sort);
   if (pageSize) params.set("pagination[pageSize]", String(pageSize));
   if (page && page > 1) params.set("pagination[page]", String(page));
-  const init: RequestInit & { next?: { tags: string[] } } = {};
-  if (typeof window === "undefined" && tag) init.next = { tags: [tag] };
+  const init: RequestInit & { next?: { tags?: string[]; revalidate?: number } } = {};
+  const nextOpts = strapiNextOptions(tag, cache);
+  if (Object.keys(nextOpts).length > 0) init.next = nextOpts;
+  if (cache) init.cache = cache;
   let res: Response;
   try {
-    res = await fetch(`${strapiFetchBase()}/api/${collection}?${params}`, init);
+    res = await strapiFetch(`${strapiFetchBase()}/api/${collection}?${params}`, init, locale);
   } catch {
     throw new ApiError(translate(locale, "api.strapiUnreachable"), 0);
   }
@@ -141,8 +254,9 @@ export interface StrapiSingleOptions {
    * "force-cache" khi fetch chạy trong layout/trang tĩnh — nếu không,
    * cacheComponents cấm prerender vì gặp dữ liệu không cache (lỗi build
    * ở /advertisers khi layout đọc Global). Tag vẫn cho revalidateTag
-   * xóa cache khi Strapi publish (BE 8). */
-  cache?: "force-cache" | "no-store";
+   * xóa cache khi Strapi publish (BE 8). Đặt "force-cache" thì fetch còn
+   * gắn `next.revalidate = 3600` (xem StrapiListOptions.cache). */
+  cache?: StrapiCacheMode;
 }
 
 export async function strapiSingle<T>(
@@ -152,12 +266,13 @@ export async function strapiSingle<T>(
   if (!isStrapiConfigured()) return null;
   const params = new URLSearchParams({ locale });
   appendPopulate(params, populate, deepPopulate);
-  const init: RequestInit & { next?: { tags: string[] } } = {};
-  if (typeof window === "undefined" && tag) init.next = { tags: [tag] };
+  const init: RequestInit & { next?: { tags?: string[]; revalidate?: number } } = {};
+  const nextOpts = strapiNextOptions(tag, cache);
+  if (Object.keys(nextOpts).length > 0) init.next = nextOpts;
   if (cache) init.cache = cache;
   let res: Response;
   try {
-    res = await fetch(`${strapiFetchBase()}/api/${single}?${params}`, init);
+    res = await strapiFetch(`${strapiFetchBase()}/api/${single}?${params}`, init, locale);
   } catch {
     throw new ApiError(translate(locale, "api.strapiUnreachable"), 0);
   }
@@ -176,17 +291,19 @@ export async function strapiSingle<T>(
 export async function strapiBySlug<T>(
   collection: string,
   slug: string,
-  { locale, populate, tag, deepPopulate }: StrapiListOptions,
+  { locale, populate, tag, cache, deepPopulate }: StrapiListOptions,
 ): Promise<T | null> {
   if (!isStrapiConfigured()) return null;
   const params = new URLSearchParams({ locale });
   params.set("filters[slug][$eq]", slug);
   appendPopulate(params, populate, deepPopulate);
-  const init: RequestInit & { next?: { tags: string[] } } = {};
-  if (typeof window === "undefined" && tag) init.next = { tags: [tag] };
+  const init: RequestInit & { next?: { tags?: string[]; revalidate?: number } } = {};
+  const nextOpts = strapiNextOptions(tag, cache);
+  if (Object.keys(nextOpts).length > 0) init.next = nextOpts;
+  if (cache) init.cache = cache;
   let res: Response;
   try {
-    res = await fetch(`${strapiFetchBase()}/api/${collection}?${params}`, init);
+    res = await strapiFetch(`${strapiFetchBase()}/api/${collection}?${params}`, init, locale);
   } catch {
     throw new ApiError(translate(locale, "api.strapiUnreachable"), 0);
   }
@@ -478,12 +595,13 @@ function isAdFormatType(v: string | undefined): v is AdFormatType {
   return v === "video" || v === "banner" || v === "text";
 }
 
-export async function fetchProducts(locale: Locale = "vi"): Promise<CmsProduct[]> {
+export async function fetchProducts(locale: Locale = "vi", cache?: StrapiCacheMode): Promise<CmsProduct[]> {
   const items = await strapiList<StrapiProductItem>("products", {
     locale,
     populate: "solutions,cover",
     deepPopulate: ["blocks"],
     tag: "strapi:products",
+    cache,
     pageSize: 100,
   });
   return items
@@ -506,12 +624,13 @@ export async function fetchProducts(locale: Locale = "vi"): Promise<CmsProduct[]
     .sort((a, b) => a.order - b.order);
 }
 
-export async function fetchProductBySlug(locale: Locale, slug: string): Promise<CmsProduct | null> {
+export async function fetchProductBySlug(locale: Locale, slug: string, cache?: StrapiCacheMode): Promise<CmsProduct | null> {
   const item = await strapiBySlug<StrapiProductItem>("products", slug, {
     locale,
     populate: "solutions,cover",
     deepPopulate: ["blocks"],
     tag: "strapi:products",
+    cache,
   });
   if (!item) return null;
   return {
@@ -532,12 +651,13 @@ export async function fetchProductBySlug(locale: Locale, slug: string): Promise<
   };
 }
 
-export async function fetchSolutionBySlug(locale: Locale, slug: string): Promise<CmsSolution | null> {
+export async function fetchSolutionBySlug(locale: Locale, slug: string, cache?: StrapiCacheMode): Promise<CmsSolution | null> {
   const item = await strapiBySlug<StrapiSolutionItem>("solutions", slug, {
     locale,
     populate: "product",
     deepPopulate: ["blocks"],
     tag: "strapi:solutions",
+    cache,
   });
   if (!item) return null;
   return {
@@ -550,11 +670,12 @@ export async function fetchSolutionBySlug(locale: Locale, slug: string): Promise
   };
 }
 
-export async function fetchSolutionsByProduct(locale: Locale, productSlug: string): Promise<CmsSolution[]> {
+export async function fetchSolutionsByProduct(locale: Locale, productSlug: string, cache?: StrapiCacheMode): Promise<CmsSolution[]> {
   const items = await strapiList<StrapiSolutionItem>("solutions", {
     locale,
     populate: "product",
     tag: "strapi:solutions",
+    cache,
     pageSize: 100,
   });
   return items
@@ -569,11 +690,12 @@ export async function fetchSolutionsByProduct(locale: Locale, productSlug: strin
     }));
 }
 
-export async function fetchAdFormats(locale: Locale = "vi"): Promise<CmsAdFormat[]> {
+export async function fetchAdFormats(locale: Locale = "vi", cache?: StrapiCacheMode): Promise<CmsAdFormat[]> {
   const items = await strapiList<StrapiAdFormatItem>("ad-formats", {
     locale,
     populate: "solution",
     tag: "strapi:ad-formats",
+    cache,
     pageSize: 100,
   });
   return items.map((item) => ({
@@ -589,10 +711,11 @@ export async function fetchAdFormats(locale: Locale = "vi"): Promise<CmsAdFormat
   }));
 }
 
-export async function fetchResources(locale: Locale = "vi", limit = 100, sort?: string): Promise<CmsResource[]> {
+export async function fetchResources(locale: Locale = "vi", limit = 100, sort?: string, cache?: StrapiCacheMode): Promise<CmsResource[]> {
   const items = await strapiList<StrapiResourceItem>("resources", {
     locale,
     tag: "strapi:resources",
+    cache,
     pageSize: Math.min(limit, 100),
     sort,
   });
@@ -607,11 +730,12 @@ export async function fetchResources(locale: Locale = "vi", limit = 100, sort?: 
   }));
 }
 
-export async function fetchEvents(locale: Locale = "vi", limit = 100, sort?: string): Promise<CmsEvent[]> {
+export async function fetchEvents(locale: Locale = "vi", limit = 100, sort?: string, cache?: StrapiCacheMode): Promise<CmsEvent[]> {
   const items = await strapiList<StrapiEventItem>("events", {
     locale,
     populate: "agenda,speakers",
     tag: "strapi:events",
+    cache,
     pageSize: Math.min(limit, 100),
     sort,
   });
@@ -633,7 +757,7 @@ export async function fetchEvents(locale: Locale = "vi", limit = 100, sort?: str
   }));
 }
 
-export async function fetchArticles(locale: Locale = "vi", limit = 100, sort?: string): Promise<CmsArticle[]> {
+export async function fetchArticles(locale: Locale = "vi", limit = 100, sort?: string, cache?: StrapiCacheMode): Promise<CmsArticle[]> {
   // Strapi giới hạn pageSize tối đa 100/trang — 118 bài cần đọc 2 trang.
   // Limit nhỏ (vd. showcase ở home chỉ cần 3 bài mới nhất) thì đọc đúng
   // từng đó, không đọc cả 100 rồi cắt trong bộ nhớ.
@@ -643,6 +767,7 @@ export async function fetchArticles(locale: Locale = "vi", limit = 100, sort?: s
     const chunk = await strapiList<StrapiArticleItem>("articles", {
       locale,
       tag: "strapi:articles",
+      cache,
       pageSize: PAGE,
       page: p,
       sort,
@@ -660,11 +785,12 @@ export async function fetchArticles(locale: Locale = "vi", limit = 100, sort?: s
   }));
 }
 
-export async function fetchHome(locale: Locale = "vi"): Promise<CmsHome | null> {
+export async function fetchHome(locale: Locale = "vi", cache?: StrapiCacheMode): Promise<CmsHome | null> {
   const item = await strapiSingle<StrapiHomeItem>("home", {
     locale,
     populate: "howItWorks",
     tag: "strapi:home",
+    cache,
   });
   if (!item) return null;
   return {
@@ -678,10 +804,11 @@ export async function fetchHome(locale: Locale = "vi"): Promise<CmsHome | null> 
   };
 }
 
-export async function fetchDataSnapshot(locale: Locale = "vi"): Promise<CmsDataSnapshot | null> {
+export async function fetchDataSnapshot(locale: Locale = "vi", cache?: StrapiCacheMode): Promise<CmsDataSnapshot | null> {
   const item = await strapiSingle<StrapiSnapshotItem>("data-snapshot", {
     locale,
     tag: "strapi:data-snapshot",
+    cache,
   });
   if (!item) return null;
   return {
@@ -725,11 +852,12 @@ export async function fetchGlobal(locale: Locale = "vi"): Promise<CmsGlobal | nu
 // Strapi hoặc chưa có bài published thì trả danh sách rỗng — giao diện hiện
 // trạng thái rỗng, không tự điền số. Locale đi qua ?locale= để nội dung
 // Strapi đổi theo nút EN/VN (mặc định vi, khớp locale mặc định của Strapi).
-export async function fetchCaseStudies(locale: Locale = "vi"): Promise<CaseStudy[]> {
+export async function fetchCaseStudies(locale: Locale = "vi", cache?: StrapiCacheMode): Promise<CaseStudy[]> {
   const items = await strapiList<StrapiCaseStudyItem>("case-studies", {
     locale,
     populate: "cover",
     tag: "strapi:case-studies",
+    cache,
   });
   return items.map((item) => {
     // Strapi v5 trả media dạng phẳng { url }; url tương đối thì ghép host Strapi.
@@ -773,19 +901,21 @@ function mapEvent(item: StrapiEventItem): CmsEvent {
   };
 }
 
-export async function fetchEventBySlug(locale: Locale, slug: string): Promise<CmsEvent | null> {
+export async function fetchEventBySlug(locale: Locale, slug: string, cache?: StrapiCacheMode): Promise<CmsEvent | null> {
   const item = await strapiBySlug<StrapiEventItem>("events", slug, {
     locale,
     populate: "agenda,speakers",
     tag: "strapi:events",
+    cache,
   });
   return item ? mapEvent(item) : null;
 }
 
-export async function fetchResourceBySlug(locale: Locale, slug: string): Promise<CmsResource | null> {
+export async function fetchResourceBySlug(locale: Locale, slug: string, cache?: StrapiCacheMode): Promise<CmsResource | null> {
   const item = await strapiBySlug<StrapiResourceItem>("resources", slug, {
     locale,
     tag: "strapi:resources",
+    cache,
   });
   if (!item) return null;
   return {
@@ -799,10 +929,11 @@ export async function fetchResourceBySlug(locale: Locale, slug: string): Promise
   };
 }
 
-export async function fetchArticleBySlug(locale: Locale, slug: string): Promise<CmsArticle | null> {
+export async function fetchArticleBySlug(locale: Locale, slug: string, cache?: StrapiCacheMode): Promise<CmsArticle | null> {
   const item = await strapiBySlug<StrapiArticleItem>("articles", slug, {
     locale,
     tag: "strapi:articles",
+    cache,
   });
   if (!item) return null;
   return {
@@ -815,11 +946,12 @@ export async function fetchArticleBySlug(locale: Locale, slug: string): Promise<
   };
 }
 
-export async function fetchCaseStudyBySlug(locale: Locale, slug: string): Promise<CaseStudy | null> {
+export async function fetchCaseStudyBySlug(locale: Locale, slug: string, cache?: StrapiCacheMode): Promise<CaseStudy | null> {
   const item = await strapiBySlug<StrapiCaseStudyItem>("case-studies", slug, {
     locale,
     populate: "cover",
     tag: "strapi:case-studies",
+    cache,
   });
   if (!item) return null;
   const rawUrl = item.cover?.url ?? null;
@@ -835,8 +967,8 @@ export async function fetchCaseStudyBySlug(locale: Locale, slug: string): Promis
   };
 }
 
-export async function fetchJobs(locale: Locale = "vi"): Promise<CmsJob[]> {
-  const items = await strapiList<StrapiJobItem>("jobs", { locale, tag: "strapi:jobs", pageSize: 100 });
+export async function fetchJobs(locale: Locale = "vi", cache?: StrapiCacheMode): Promise<CmsJob[]> {
+  const items = await strapiList<StrapiJobItem>("jobs", { locale, tag: "strapi:jobs", cache, pageSize: 100 });
   return items.map((item) => ({
     title: item.title ?? "",
     slug: item.slug ?? "",
@@ -849,8 +981,8 @@ export async function fetchJobs(locale: Locale = "vi"): Promise<CmsJob[]> {
   }));
 }
 
-export async function fetchJobBySlug(locale: Locale, slug: string): Promise<CmsJob | null> {
-  const item = await strapiBySlug<StrapiJobItem>("jobs", slug, { locale, tag: "strapi:jobs" });
+export async function fetchJobBySlug(locale: Locale, slug: string, cache?: StrapiCacheMode): Promise<CmsJob | null> {
+  const item = await strapiBySlug<StrapiJobItem>("jobs", slug, { locale, tag: "strapi:jobs", cache });
   if (!item) return null;
   return {
     title: item.title ?? "",
@@ -864,10 +996,11 @@ export async function fetchJobBySlug(locale: Locale, slug: string): Promise<CmsJ
   };
 }
 
-export async function fetchPartners(locale: Locale = "vi"): Promise<CmsPartner[]> {
+export async function fetchPartners(locale: Locale = "vi", cache?: StrapiCacheMode): Promise<CmsPartner[]> {
   const items = await strapiList<StrapiPartnerItem>("partners", {
     locale,
     tag: "strapi:partners",
+    cache,
     pageSize: 100,
   });
   return items.map((item) => ({
@@ -880,11 +1013,12 @@ export async function fetchPartners(locale: Locale = "vi"): Promise<CmsPartner[]
   }));
 }
 
-export async function fetchCustomers(locale: Locale = "vi"): Promise<CmsCustomer[]> {
+export async function fetchCustomers(locale: Locale = "vi", cache?: StrapiCacheMode): Promise<CmsCustomer[]> {
   const items = await strapiList<StrapiCustomerItem>("customers", {
     locale,
     populate: "caseStudy",
     tag: "strapi:customers",
+    cache,
     pageSize: 100,
   });
   return items.map((item) => ({
@@ -904,8 +1038,8 @@ export async function fetchCustomers(locale: Locale = "vi"): Promise<CmsCustomer
   }));
 }
 
-export async function fetchFaqs(locale: Locale = "vi"): Promise<CmsFaq[]> {
-  const items = await strapiList<StrapiFaqItem>("faqs", { locale, tag: "strapi:faqs", pageSize: 100 });
+export async function fetchFaqs(locale: Locale = "vi", cache?: StrapiCacheMode): Promise<CmsFaq[]> {
+  const items = await strapiList<StrapiFaqItem>("faqs", { locale, tag: "strapi:faqs", cache, pageSize: 100 });
   const faqs = items.map((item) => ({
     slug: item.slug ?? "",
     question: item.question ?? "",

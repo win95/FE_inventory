@@ -5,7 +5,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { connection } from "next/server";
 import { Breadcrumb } from "@/components/ui";
 import EventRegistrationForm from "@/components/EventRegistrationForm";
 import ShareButtons from "@/components/ShareButtons";
@@ -16,12 +15,11 @@ import { localizedUrl, pageMetadata } from "@/lib/seo";
 import { formatDate } from "@/lib/format";
 import { nowMs } from "@/lib/format";
 
-export const instant = false;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale; slug: string }> }): Promise<Metadata> {
   const { locale, slug } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  const item = await fetchEventBySlug(loc, slug).catch(() => null);
+  const item = await fetchEventBySlug(loc, slug, "force-cache").catch(() => null);
   if (!item) return pageMetadata({ locale: loc, path: `/events/${slug}`, title: "AWING", description: "" });
   return pageMetadata({ locale: loc, path: `/events/${slug}`, title: `${item.title} — AWING`, description: item.summary });
 }
@@ -31,8 +29,7 @@ const MODE_LABEL: Record<string, DictKey> = { online: "events.modeOnline", offli
 export default async function EventDetailPage({ params }: { params: Promise<{ locale: Locale; slug: string }> }) {
   const { locale, slug } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  await connection();
-  const item = await fetchEventBySlug(loc, slug);
+  const item = await fetchEventBySlug(loc, slug, "force-cache");
   if (!item) notFound();
 
   const start = item.startDate ? new Date(item.startDate).getTime() : 0;

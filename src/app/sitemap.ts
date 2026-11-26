@@ -68,13 +68,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   );
   try {
     const [products, resources, events, articles, jobs, studies] = await Promise.all([
-      fetchProducts("vi"),
-      fetchResources("vi"),
-      fetchEvents("vi"),
+      fetchProducts("vi", "force-cache"),
+      fetchResources("vi", 100, undefined, "force-cache"),
+      fetchEvents("vi", 100, undefined, "force-cache"),
       // 118 bài — limit mặc định 100 sẽ cắt mất 18 bài khỏi sitemap.
-      fetchArticles("vi", 200),
-      fetchJobs("vi"),
-      fetchCaseStudies("vi"),
+      fetchArticles("vi", 200, undefined, "force-cache"),
+      fetchJobs("vi", "force-cache"),
+      fetchCaseStudies("vi", "force-cache"),
     ]);
     for (const p of products) {
       out.push(entry(`/products/${p.slug}`, { priority: 0.8 }));

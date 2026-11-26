@@ -11,10 +11,7 @@ import { PRODUCT_THEME } from "@/lib/product-theme";
 import { Breadcrumb } from "@/components/ui";
 import { fetchCaseStudies, fetchProductBySlug, fetchSolutionBySlug, fetchSolutionsByProduct } from "@/lib/strapi";
 import { translate, withLocale, type Locale } from "@/lib/i18n";
-import { connection } from "next/server";
 
-// Route chặn (blocking): dữ liệu CMS đọc ở mỗi request, không prerender.
-export const instant = false;
 import { breadcrumbJsonLd, localizedUrl, pageMetadata } from "@/lib/seo";
 
 export async function generateMetadata({
@@ -24,7 +21,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale, product, solution } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  const sol = await fetchSolutionBySlug(loc, solution).catch(() => null);
+  const sol = await fetchSolutionBySlug(loc, solution, "force-cache").catch(() => null);
   if (!sol || sol.productSlug !== product) {
     return pageMetadata({ locale: loc, path: `/products/${product}/${solution}`, title: "AWING", description: "" });
   }
@@ -43,13 +40,12 @@ export default async function SolutionDetailPage({
 }) {
   const { locale, product: productSlug, solution: solutionSlug } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  await connection(); // Dừng prerender — đọc Strapi ở mỗi request.
-  const sol = await fetchSolutionBySlug(loc, solutionSlug);
+  const sol = await fetchSolutionBySlug(loc, solutionSlug, "force-cache");
   if (!sol || sol.productSlug !== productSlug) notFound();
   const [product, siblings, caseStudies] = await Promise.all([
-    fetchProductBySlug(loc, productSlug),
-    fetchSolutionsByProduct(loc, productSlug),
-    fetchCaseStudies(loc),
+    fetchProductBySlug(loc, productSlug, "force-cache"),
+    fetchSolutionsByProduct(loc, productSlug, "force-cache"),
+    fetchCaseStudies(loc, "force-cache"),
   ]);
   const theme = product ? PRODUCT_THEME[product.color] : null;
 

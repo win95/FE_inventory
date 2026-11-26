@@ -2,7 +2,6 @@
 // tin liên quan cùng chuyên mục.
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { connection } from "next/server";
 import ArticleTemplate from "@/components/ArticleTemplate";
 import ContentCard from "@/components/content/ContentCard";
 import { fetchArticleBySlug, fetchArticles } from "@/lib/strapi";
@@ -10,12 +9,11 @@ import { translate, withLocale, type Locale } from "@/lib/i18n";
 import { localizedUrl, pageMetadata } from "@/lib/seo";
 import { formatDate } from "@/lib/format";
 
-export const instant = false;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale; slug: string }> }): Promise<Metadata> {
   const { locale, slug } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  const item = await fetchArticleBySlug(loc, slug).catch(() => null);
+  const item = await fetchArticleBySlug(loc, slug, "force-cache").catch(() => null);
   if (!item) return pageMetadata({ locale: loc, path: `/news/${slug}`, title: "AWING", description: "" });
   return pageMetadata({ locale: loc, path: `/news/${slug}`, title: `${item.title} — AWING`, description: item.summary });
 }
@@ -23,11 +21,10 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: L
 export default async function NewsDetailPage({ params }: { params: Promise<{ locale: Locale; slug: string }> }) {
   const { locale, slug } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  await connection();
-  const item = await fetchArticleBySlug(loc, slug);
+  const item = await fetchArticleBySlug(loc, slug, "force-cache");
   if (!item) notFound();
 
-  const related = (await fetchArticles(loc, 200))
+  const related = (await fetchArticles(loc, 200, undefined, "force-cache"))
     .filter((a) => a.slug !== slug && a.category === item.category)
     .sort((a, b) => (b.publishedDate ?? "").localeCompare(a.publishedDate ?? ""))
     .slice(0, 3);

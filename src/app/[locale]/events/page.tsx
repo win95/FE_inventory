@@ -3,7 +3,6 @@
 // diễn ra (12/2026, 02/2027), 3 đã diễn ra (11/2026, 09/2026, 06/2025).
 import type { Metadata } from "next";
 import Link from "next/link";
-import { connection } from "next/server";
 import { Breadcrumb } from "@/components/ui";
 import ContentCard from "@/components/content/ContentCard";
 import { fetchEvents } from "@/lib/strapi";
@@ -11,7 +10,6 @@ import { translate, withLocale, type DictKey, type Locale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/seo";
 import { formatDate, nowMs } from "@/lib/format";
 
-export const instant = false;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -30,12 +28,11 @@ export default async function EventsPage({
 }) {
   const { locale } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  await connection();
   const sp = await searchParams;
   const tab = typeof sp.tab === "string" && sp.tab === "past" ? "past" : "upcoming";
   const mode = typeof sp.mode === "string" ? sp.mode : "";
 
-  const all = await fetchEvents(loc);
+  const all = await fetchEvents(loc, 100, undefined, "force-cache");
   const now = nowMs();
   const filtered = all
     .filter((e) => {

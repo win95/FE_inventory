@@ -10,14 +10,11 @@
 //   tầng dữ liệu tách riêng ở lib/strapi.ts để R2 thay bằng Data API.
 // - FE 26: showcase mới nhất (News/Resources/Events, server).
 // - FE 27: CTA cuối trang mở dialog lead với source (HomeCtaBand).
-// Trang đọc Strapi mới nhất ở mỗi request: await connection() (Next 16 +
-// cacheComponents — thay cho export const dynamic đã bị cấm) dừng
-// prerender tại đó; revalidate qua webhook vẫn áp dụng cho tầng fetch khi
-// trang chuyển sang static ở R2.
-import { connection } from "next/server";
+// Trang đọc Strapi qua cache (P0 K8s FE + cache): fetch "force-cache" +
+// tag — nội dung mới hiện khi Strapi publish (webhook → revalidateTag),
+// revalidate nền mỗi giờ. Trang prerender được, không đọc Strapi mới
+// ở mỗi request nữa.
 
-// Route chặn (blocking): dữ liệu CMS đọc ở mỗi request, không prerender.
-export const instant = false;
 import HomeCtaBand from "@/components/HomeCtaBand";
 import HomeHero from "@/components/HomeHero";
 import HowItWorks from "@/components/HowItWorks";
@@ -35,14 +32,13 @@ function byDateDesc(a: { date: string | null }, b: { date: string | null }) {
 export default async function Home({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  await connection(); // Dừng prerender — đọc Strapi ở mỗi request.
   const [home, products, snapshot, articles, resources, events] = await Promise.all([
-    fetchHome(loc),
-    fetchProducts(loc),
-    fetchDataSnapshot(loc),
-    fetchArticles(loc, 3, "publishedDate:desc"),
-    fetchResources(loc, 3, "publishedDate:desc"),
-    fetchEvents(loc, 3, "startDate:desc"),
+    fetchHome(loc, "force-cache"),
+    fetchProducts(loc, "force-cache"),
+    fetchDataSnapshot(loc, "force-cache"),
+    fetchArticles(loc, 3, "publishedDate:desc", "force-cache"),
+    fetchResources(loc, 3, "publishedDate:desc", "force-cache"),
+    fetchEvents(loc, 3, "startDate:desc", "force-cache"),
   ]);
 
   const showcase = [

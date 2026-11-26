@@ -2,13 +2,11 @@
 // màu + nội dung từ CMS. Thẻ dạng infographic: số thứ tự, nhãn mục tiêu,
 // tên, slogan, mô tả, tối đa 4 tính năng (solution), ảnh cover khi CMS có,
 // dòng kết là link chi tiết. data-product trên mỗi thẻ (FE 32).
-// Đọc Strapi ở mỗi request qua await connection() (Next 16 + cacheComponents).
+// Đọc Strapi qua cache "force-cache" (P0 K8s FE + cache): nội dung mới
+// hiện khi Strapi publish (webhook → revalidateTag).
 import type { Metadata } from "next";
 import Link from "next/link";
-import { connection } from "next/server";
 
-// Route chặn (blocking): dữ liệu CMS đọc ở mỗi request, không prerender.
-export const instant = false;
 import CmsImage from "@/components/CmsImage";
 import { PRODUCT_THEME } from "@/lib/product-theme";
 import { Breadcrumb } from "@/components/ui";
@@ -34,8 +32,7 @@ export async function generateMetadata({
 export default async function ProductsPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  await connection(); // Dừng prerender — đọc Strapi ở mỗi request.
-  const products = await fetchProducts(loc);
+  const products = await fetchProducts(loc, "force-cache");
 
   return (
     <main>

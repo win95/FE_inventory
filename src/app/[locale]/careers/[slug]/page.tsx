@@ -4,7 +4,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { connection } from "next/server";
 import { Breadcrumb } from "@/components/ui";
 import CvApplicationForm from "@/components/CvApplicationForm";
 import RichText from "@/components/RichText";
@@ -13,12 +12,11 @@ import { translate, withLocale, type DictKey, type Locale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/seo";
 import { formatDate, todayIso } from "@/lib/format";
 
-export const instant = false;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale; slug: string }> }): Promise<Metadata> {
   const { locale, slug } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  const item = await fetchJobBySlug(loc, slug).catch(() => null);
+  const item = await fetchJobBySlug(loc, slug, "force-cache").catch(() => null);
   if (!item) return pageMetadata({ locale: loc, path: `/careers/${slug}`, title: "AWING", description: "" });
   return pageMetadata({ locale: loc, path: `/careers/${slug}`, title: `${item.title} — AWING`, description: item.description.split(/\n\s*\n/)[0] ?? "" });
 }
@@ -28,8 +26,7 @@ const TYPE_LABEL: Record<string, DictKey> = { "full-time": "jobs.typeFullTime", 
 export default async function JobDetailPage({ params }: { params: Promise<{ locale: Locale; slug: string }> }) {
   const { locale, slug } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  await connection();
-  const item = await fetchJobBySlug(loc, slug);
+  const item = await fetchJobBySlug(loc, slug, "force-cache");
   if (!item) notFound();
 
   const today = todayIso();

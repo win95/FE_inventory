@@ -92,10 +92,51 @@ const nextConfig: NextConfig = {
       const url = new URL(origin);
       return [{ protocol: url.protocol.replace(":", "") as "http" | "https", hostname: url.hostname, port: url.port || undefined, pathname: "/uploads/**" }];
     })(),
+    // P0 K8s FE + cache: ảnh tối ưu đi qua cacheHandler số ít (kind
+    // IMAGE) để dùng chung Redis + disk thay vì nằm local từng pod.
+    customCacheHandler: true,
   },
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
+  // P0 K8s FE + cache (§4.1 thiết kế): cả 2 interface cache đều dùng
+  // chung Redis qua wrapper đa tầng (cache-handlers/) — chỉ gắn một bên
+  // thì bên còn lại vẫn nằm local từng pod, sai mục đích.
+  // - cacheHandler (số ít): ISR, Route Handler, fetch/unstable_cache,
+  //   next/image (optimizer tích hợp).
+  // - cacheHandlers (số nhiều): "use cache" / "use cache: remote".
+  // KHÔNG đặt cacheMaxMemorySize: 0 (ví dụ mẫu của @publira đặt 0) —
+  // giữ in-memory cache mặc định 50 MB/pod làm tầng L1 phía trước
+  // handler số ít; tầng L1 cho "use cache" nằm trong wrapper.
+  cacheHandler: import.meta.resolve("./cache-handlers/incremental.mjs"),
+  cacheHandlers: {
+    default: import.meta.resolve("./cache-handlers/use-cache.mjs"),
+    remote: import.meta.resolve("./cache-handlers/use-cache.mjs"),
+  },
+  // P0 K8s FE + cache (§2.1, §6.1 thiết kế): profile thời gian sống cho
+  // hàm "use cache". Tag invalidation khi Strapi publish vẫn là cơ chế
+  // làm mới chính; cacheLife chỉ lo làm mới nền định kỳ.
+  // - content: nội dung CMS — revalidate 1 giờ, expire 7 ngày.
+  // - global: single Global + năm bản quyền — đổi rất hiếm, revalidate
+  //   1 ngày, expire 30 ngày.
+  cacheLife: {
+    content: {
+      stale: 600, // 10 phút
+      revalidate: 3600, // 1 giờ
+      expire: 604800, // 7 ngày
+    },
+    global: {
+      stale: 1800, // 30 phút
+      revalidate: 86400, // 1 ngày
+      expire: 2592000, // 30 ngày
+    },
+  },
+  // P0 K8s FE + cache (§4.2 thiết kế): BUILD_ID ổn định theo commit —
+  // rolling update không 404 JS chunk, key Redis namespace theo BUILD_ID
+  // nên deploy mới không đọc nhầm cache deploy cũ. CI build image với
+  // --build-arg GIT_SHA=<commit> (hoặc tag image bằng commit SHA).
+  // trim() + || để chuỗi rỗng (ARG không truyền) cũng rơi về "dev".
+  generateBuildId: () => process.env.GIT_SHA?.trim() || process.env.IMAGE_TAG?.trim() || "dev",
   turbopack: {
     rules: {
       "*.css": {

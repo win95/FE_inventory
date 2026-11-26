@@ -1,14 +1,12 @@
 // Câu hỏi thường gặp (R1-4, FE 44): accordion nhóm theo chuyên mục +
 // schema FAQPage. 12 câu seed: Wi-Fi / Quảng cáo / Dữ liệu.
 import type { Metadata } from "next";
-import { connection } from "next/server";
 import { Breadcrumb } from "@/components/ui";
 import FaqAccordion from "@/components/FaqAccordion";
 import { fetchFaqs } from "@/lib/strapi";
 import { translate, withLocale, type Locale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/seo";
 
-export const instant = false;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -19,8 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: L
 export default async function FaqPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  await connection();
-  const all = await fetchFaqs(loc);
+  const all = await fetchFaqs(loc, "force-cache");
   const categories = [...new Set(all.map((f) => f.category).filter(Boolean))];
 
   return (

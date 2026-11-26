@@ -2,13 +2,11 @@
 // CHỈ hiển thị đối tác có consent=true — đối tác consent=false (seed cố
 // tình để 1) không xuất hiện và không được link tới.
 import type { Metadata } from "next";
-import { connection } from "next/server";
 import { Breadcrumb } from "@/components/ui";
 import { fetchPartners } from "@/lib/strapi";
 import { translate, withLocale, type DictKey, type Locale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/seo";
 
-export const instant = false;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -25,8 +23,7 @@ const GROUPS: { category: string; key: DictKey }[] = [
 export default async function PartnersPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  await connection();
-  const all = await fetchPartners(loc);
+  const all = await fetchPartners(loc, "force-cache");
   const shown = all.filter((p) => p.consent);
 
   return (

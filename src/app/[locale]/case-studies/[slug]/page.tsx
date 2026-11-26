@@ -2,19 +2,17 @@
 // Link tới đây từ trang Customers và từ khối case study ở trang solution.
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { connection } from "next/server";
 import ArticleTemplate from "@/components/ArticleTemplate";
 import ContentCard from "@/components/content/ContentCard";
 import { fetchCaseStudies, fetchCaseStudyBySlug } from "@/lib/strapi";
 import { translate, withLocale, type Locale } from "@/lib/i18n";
 import { localizedUrl, pageMetadata } from "@/lib/seo";
 
-export const instant = false;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale; slug: string }> }): Promise<Metadata> {
   const { locale, slug } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  const item = await fetchCaseStudyBySlug(loc, slug).catch(() => null);
+  const item = await fetchCaseStudyBySlug(loc, slug, "force-cache").catch(() => null);
   if (!item) return pageMetadata({ locale: loc, path: `/case-studies/${slug}`, title: "AWING", description: "" });
   return pageMetadata({ locale: loc, path: `/case-studies/${slug}`, title: `${item.title} — AWING`, description: item.summary ?? "" });
 }
@@ -22,11 +20,10 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: L
 export default async function CaseStudyDetailPage({ params }: { params: Promise<{ locale: Locale; slug: string }> }) {
   const { locale, slug } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  await connection();
-  const item = await fetchCaseStudyBySlug(loc, slug);
+  const item = await fetchCaseStudyBySlug(loc, slug, "force-cache");
   if (!item) notFound();
 
-  const related = (await fetchCaseStudies(loc)).filter((c) => c.slug !== slug).slice(0, 3);
+  const related = (await fetchCaseStudies(loc, "force-cache")).filter((c) => c.slug !== slug).slice(0, 3);
 
   return (
     <ArticleTemplate

@@ -2,7 +2,6 @@
 // liên hệ. Không công bố doanh thu hay tên khách hàng kèm doanh thu
 // (quy tắc D-08).
 import type { Metadata } from "next";
-import { connection } from "next/server";
 import { Breadcrumb } from "@/components/ui";
 import StatsCard from "@/components/content/StatsCard";
 import { fetchDataSnapshot, fetchHome } from "@/lib/strapi";
@@ -10,7 +9,6 @@ import { translate, withLocale, type Locale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/seo";
 import { formatDate } from "@/lib/format";
 
-export const instant = false;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -21,8 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: L
 export default async function InvestorsPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  await connection();
-  const [home, snapshot] = await Promise.all([fetchHome(loc), fetchDataSnapshot(loc)]);
+  const [home, snapshot] = await Promise.all([fetchHome(loc, "force-cache"), fetchDataSnapshot(loc, "force-cache")]);
 
   return (
     <main>

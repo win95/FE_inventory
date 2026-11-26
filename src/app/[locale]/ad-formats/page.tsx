@@ -1,9 +1,6 @@
 // Trang catalogue định dạng quảng cáo (R1-3, FE 31) — dữ liệu từ Strapi.
 import type { Metadata } from "next";
-import { connection } from "next/server";
 
-// Route chặn (blocking): dữ liệu CMS đọc ở mỗi request, không prerender.
-export const instant = false;
 import AdFormatCatalog from "@/components/AdFormatCatalog";
 import { Breadcrumb } from "@/components/ui";
 import { fetchAdFormats } from "@/lib/strapi";
@@ -28,8 +25,7 @@ export async function generateMetadata({
 export default async function AdFormatsPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
   const loc = (locale === "en" ? "en" : "vi") as Locale;
-  await connection(); // Dừng prerender — đọc Strapi ở mỗi request.
-  const formats = await fetchAdFormats(loc);
+  const formats = await fetchAdFormats(loc, "force-cache");
 
   return (
     <main>

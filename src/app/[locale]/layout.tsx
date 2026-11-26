@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { cacheTag } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import Footer from "@/components/Footer";
 import LocaleProvider from "@/components/LocaleProvider";
 import SiteChrome from "@/components/SiteChrome";
@@ -27,8 +28,15 @@ import { todayIso } from "@/lib/format";
 // Lỗi phải bắt BÊN TRONG hàm cache: lỗi ném ra từ "use cache" làm hỏng
 // prerender (build fail) dù bên ngoài có .catch — Strapi lỗi/chưa có
 // Global (404) thì trả null, footer giữ nút mờ.
+// Profile `global` (next.config.ts): revalidate 1 ngày, expire 30 ngày —
+// Global đổi rất hiếm; publish vẫn làm mới ngay nhờ tag.
+// Giữ "use cache" (không đổi sang "use cache: remote"): cả hai handler
+// đều trỏ cùng wrapper Redis nên hành vi giống hệt nhau với dữ liệu
+// prerender tĩnh này; "remote" chỉ khác khi cần cache ở request-time
+// (xem use-cache-remote.md), layout không thuộc trường hợp đó.
 async function getGlobal(locale: Locale) {
   "use cache";
+  cacheLife("global");
   cacheTag("strapi:global");
   return fetchGlobal(locale).catch(() => null);
 }
@@ -38,6 +46,7 @@ async function getGlobal(locale: Locale) {
 // còn giá trị cache ở build thì ổn định (năm chỉ đổi khi build lại).
 async function getYear() {
   "use cache";
+  cacheLife("global");
   return todayIso().slice(0, 4);
 }
 
@@ -83,7 +92,15 @@ export default async function LocaleLayout({
         }}
       />
       <SiteChrome>{children}</SiteChrome>
-      <Footer socials={global?.socialLinks ?? []} year={year} />
+      {/* P0 K8s FE + cache: Footer dùng usePathname() (ẩn footer ở
+          /advertisers) — hook runtime nên phải nằm trong Suspense, nếu
+          không mọi trang tĩnh đều không prerender được (Next 16 chặn
+          shell tĩnh khi gặp client hook ngoài Suspense). Footer ở cuối
+          trang nên fallback null không ảnh hưởng LCP; footer vẫn render
+          ở phía server trong cùng response (streaming), chỉ sau shell. */}
+      <Suspense fallback={null}>
+        <Footer socials={global?.socialLinks ?? []} year={year} />
+      </Suspense>
       <ToastViewport />
     </LocaleProvider>
   );
