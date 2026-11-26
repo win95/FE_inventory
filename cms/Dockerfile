@@ -2,11 +2,11 @@ FROM node:24-alpine
 
 WORKDIR /opt/app
 
-# Toolchain dự phòng: sharp (xử lý ảnh của Strapi) thường dùng binary có sẵn,
-# nhưng nếu phải build từ source thì cần python/make/g++.
-# better-sqlite3 KHÔNG có trong image này — nó chỉ phục vụ chạy thử bằng
-# SQLite trên host (xem README), còn trong Compose Strapi dùng Postgres.
-RUN apk add --no-cache python3 make g++
+# Không cần toolchain build (python/make/g++): không có dependency nào biên
+# dịch native trong `npm ci` — sharp dùng binary có sẵn cho linuxmusl-x64,
+# better-sqlite3 chỉ là peerDependency optional của knex (không được cài),
+# còn Strapi trong Compose dùng Postgres (`pg` thuần JS).
+# (Bỏ `apk add` cũng bỏ luôn điểm lỗi DNS của dl-cdn.alpinelinux.org.)
 
 COPY package.json package-lock.json ./
 RUN npm ci
