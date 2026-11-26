@@ -38,7 +38,7 @@ async function getGlobal(locale: Locale) {
   "use cache";
   cacheLife("global");
   cacheTag("strapi:global");
-  return fetchGlobal(locale).catch(() => null);
+  return fetchGlobal(locale, { inUseCache: true }).catch(() => null);
 }
 
 // Năm bản quyền: tính trong "use cache" — new Date() trực tiếp trong

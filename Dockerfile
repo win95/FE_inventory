@@ -24,7 +24,11 @@ ARG GIT_SHA
 ARG IMAGE_TAG
 ENV GIT_SHA=$GIT_SHA
 ENV IMAGE_TAG=$IMAGE_TAG
-RUN npm run build
+# Lúc `docker build` không có Redis (container build cô lập, Redis chỉ
+# chạy khi `docker compose up`) → tắt L2 Redis cho riêng bước build; nội
+# dung prerender vẫn ghi vào disk L3/seed và được copy sang runner. Runtime
+# vẫn dùng PNCH_REDIS_URL từ docker-compose.yml.
+RUN PNCH_REDIS_URL=off npm run build
 # P0 K8s FE + cache: đảm bảo thư mục disk cache build-time luôn tồn tại
 # để stage runner COPY không lỗi (khi không có entry nào được ghi lúc build).
 RUN mkdir -p .next/cache/awing-multi-tier

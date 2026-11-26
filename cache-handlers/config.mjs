@@ -75,3 +75,15 @@ export const diskDir = join(
   process.env.CACHE_DISK_DIR?.trim() || join(dotNextDir, "cache", "awing-multi-tier"),
   buildId,
 );
+
+/**
+ * Thời điểm hiện tại (ms epoch) cho cache handler — thay Date.now().
+ * Handler chạy bên trong prerender của `next build` (cacheComponents), nơi
+ * Next cấm Date.now() ("blocking-prerender-current-time") → build lỗi khi
+ * Strapi/Redis không tới được. performance.timeOrigin + performance.now()
+ * cho cùng giá trị epoch (đồng hồ đơn điệu) mà Next không chặn — cũng là
+ * cách cache nội bộ của Next đo thời gian.
+ */
+export function nowMs() {
+  return performance.timeOrigin + performance.now();
+}

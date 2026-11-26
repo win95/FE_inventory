@@ -10,6 +10,7 @@
 // - Strapi chưa cấu hình → trả rỗng, không throw; CMS lỗi HTTP → throw
 //   ApiError để trang hiện trạng thái lỗi, không crash (fallback FE 5).
 // - Tag đặt tên theo quy ước `strapi:<collection>` để webhook biết xóa tag nào.
+import { connection } from "next/server";
 import { translate, type Locale } from "./i18n";
 import { ApiError } from "./errors";
 import type { CaseStudy, CmsCustomer, CmsFaq, CmsGlobal, CmsJob, CmsPartner } from "./types";
@@ -89,12 +90,22 @@ const STRAPI_FETCH_TIMEOUT_MS = Number(process.env.STRAPI_FETCH_TIMEOUT_MS ?? 10
 const BREAKER_FAILURE_THRESHOLD = 5; // Lỗi liên tiếp thì mở mạch.
 const BREAKER_COOLDOWN_MS = 30000; // Mở 30 giây rồi cho 1 request thử lại.
 const inflightStrapiFetch = new Map<string, Promise<{ status: number; text: string }>>();
-const strapiBreaker = { failures: 0, openedAt: 0, halfOpen: false };
+const strapiBreaker = { failures: 0, open: false, openedAt: 0, halfOpen: false };
+
+// Đo cooldown bằng performance.now() (đồng hồ đơn điệu), KHÔNG dùng
+// Date.now(): với cacheComponents, Date.now() trong lúc prerender (vd. build
+// Docker không tới được Strapi → mạch mở) làm `next build` lỗi
+// "blocking-prerender-current-time". Cooldown chỉ cần khoảng thời gian
+// tương đối nên performance.now() đúng ngữ nghĩa hơn.
+function breakerNow(): number {
+  return performance.now();
+}
 
 function isBreakerOpen(): boolean {
-  if (strapiBreaker.openedAt === 0) return false;
-  if (Date.now() - strapiBreaker.openedAt < BREAKER_COOLDOWN_MS) return true;
+  if (!strapiBreaker.open) return false;
+  if (breakerNow() - strapiBreaker.openedAt < BREAKER_COOLDOWN_MS) return true;
   // Hết cooldown: cho đúng 1 request thử lại (half-open).
+  strapiBreaker.open = false;
   strapiBreaker.openedAt = 0;
   strapiBreaker.halfOpen = true;
   return false;
@@ -102,6 +113,7 @@ function isBreakerOpen(): boolean {
 
 function noteStrapiSuccess(): void {
   strapiBreaker.failures = 0;
+  strapiBreaker.open = false;
   strapiBreaker.openedAt = 0;
   strapiBreaker.halfOpen = false;
 }
@@ -111,12 +123,14 @@ function noteStrapiFailure(): void {
     // Request thử lại thất bại → mở mạch ngay, không đợi đủ 5 lỗi.
     strapiBreaker.halfOpen = false;
     strapiBreaker.failures = BREAKER_FAILURE_THRESHOLD;
-    strapiBreaker.openedAt = Date.now();
+    strapiBreaker.open = true;
+    strapiBreaker.openedAt = breakerNow();
     return;
   }
   strapiBreaker.failures += 1;
   if (strapiBreaker.failures >= BREAKER_FAILURE_THRESHOLD) {
-    strapiBreaker.openedAt = Date.now();
+    strapiBreaker.open = true;
+    strapiBreaker.openedAt = breakerNow();
   }
 }
 
@@ -159,6 +173,28 @@ async function strapiFetch(url: string, init: RequestInit, locale: Locale): Prom
   } finally {
     inflightStrapiFetch.delete(key);
   }
+}
+
+/**
+ * Strapi không tới được → ném ApiError strapiUnreachable. Riêng lúc
+ * prerender (vd. `docker compose build`: container build không tới được
+ * Strapi), trước khi ném thì gọi connection() để Next hoãn trang sang
+ * request-time (shell = [locale]/loading.tsx) thay vì làm build lỗi hoặc
+ * nướng trang lỗi vào bản tĩnh. Ngoài prerender connection() resolve ngay
+ * (request thường) hoặc throw (trong "use cache"/generateStaticParams) —
+ * cả hai trường hợp đều rơi xuống throw ApiError như cũ.
+ */
+async function throwStrapiUnreachable(locale: Locale, defer = true): Promise<never> {
+  // defer=false khi caller chạy trong "use cache" (Next cấm connection()
+  // ở đó và báo lỗi build kể cả khi bắt exception).
+  if (defer && typeof window === "undefined") {
+    try {
+      await connection();
+    } catch {
+      // Không ở trong request/prerender (vd. "use cache") — giữ hành vi cũ.
+    }
+  }
+  throw new ApiError(translate(locale, "api.strapiUnreachable"), 0);
 }
 
 /** Gắn tag + revalidate nền cho fetch chạy phía server (xem StrapiListOptions.cache). */
@@ -209,7 +245,7 @@ export async function strapiList<T>(
   try {
     res = await strapiFetch(`${strapiFetchBase()}/api/${collection}?${params}`, init, locale);
   } catch {
-    throw new ApiError(translate(locale, "api.strapiUnreachable"), 0);
+    return throwStrapiUnreachable(locale);
   }
   if (!res.ok) {
     throw new ApiError(translate(locale, "api.strapiError", { status: String(res.status) }), res.status);
@@ -257,11 +293,14 @@ export interface StrapiSingleOptions {
    * xóa cache khi Strapi publish (BE 8). Đặt "force-cache" thì fetch còn
    * gắn `next.revalidate = 3600` (xem StrapiListOptions.cache). */
   cache?: StrapiCacheMode;
+  /** Đặt true khi gọi từ trong hàm "use cache" — Strapi không tới được
+   * thì ném ApiError luôn, không hoãn prerender bằng connection(). */
+  inUseCache?: boolean;
 }
 
 export async function strapiSingle<T>(
   single: string,
-  { locale, populate, tag, deepPopulate, cache }: StrapiSingleOptions,
+  { locale, populate, tag, deepPopulate, cache, inUseCache }: StrapiSingleOptions,
 ): Promise<T | null> {
   if (!isStrapiConfigured()) return null;
   const params = new URLSearchParams({ locale });
@@ -274,7 +313,7 @@ export async function strapiSingle<T>(
   try {
     res = await strapiFetch(`${strapiFetchBase()}/api/${single}?${params}`, init, locale);
   } catch {
-    throw new ApiError(translate(locale, "api.strapiUnreachable"), 0);
+    return throwStrapiUnreachable(locale, !inUseCache);
   }
   // Single type chưa tạo/chưa publish nội dung → Strapi 5 trả 404. Coi như
   // "chưa có nội dung" (giống collection rỗng trả []), không phải lỗi CMS —
@@ -305,7 +344,7 @@ export async function strapiBySlug<T>(
   try {
     res = await strapiFetch(`${strapiFetchBase()}/api/${collection}?${params}`, init, locale);
   } catch {
-    throw new ApiError(translate(locale, "api.strapiUnreachable"), 0);
+    return throwStrapiUnreachable(locale);
   }
   if (!res.ok) {
     throw new ApiError(translate(locale, "api.strapiError", { status: String(res.status) }), res.status);
@@ -828,9 +867,13 @@ export async function fetchDataSnapshot(locale: Locale = "vi", cache?: StrapiCac
 // hiện tại là giá trị seed R1 (awingvietnam) — SOC-01 chốt URL thật thì
 // cập nhật trong CMS. Chưa cấu hình Strapi thì trả null, footer giữ
 // nút mờ như cũ.
-export async function fetchGlobal(locale: Locale = "vi"): Promise<CmsGlobal | null> {
+export async function fetchGlobal(
+  locale: Locale = "vi",
+  { inUseCache = false }: { inUseCache?: boolean } = {},
+): Promise<CmsGlobal | null> {
   const item = await strapiSingle<StrapiGlobalItem>("global", {
     locale,
+    inUseCache,
     populate: "socialLinks",
     tag: "strapi:global",
     // Layout (tĩnh) đọc Global — phải cache, nếu không build lỗi

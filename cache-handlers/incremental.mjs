@@ -10,7 +10,7 @@
 // mở breaker 30s — vì @publira thử reconnect 10 lần mỗi lần gọi mới,
 // không có breaker thì mỗi request trả giá ~5–11s khi Redis chết.
 import { RedisIncrementalCacheHandler } from "@publira/next-cache-handlers";
-import { keyPrefix, redisUrl } from "./config.mjs";
+import { keyPrefix, redisUrl, nowMs } from "./config.mjs";
 import {
   addToTagIndex,
   checkIncDiskEntry,
@@ -103,7 +103,7 @@ export default class MultiTierIncrementalCacheHandler extends RedisIncrementalCa
     }
     try {
       const tags = extractTags(data, ctx);
-      const stored = { lastModified: Date.now(), tags, value: data };
+      const stored = { lastModified: nowMs(), tags, value: data };
       writeDiskEntryRaw("inc", cacheKey, serializeCachePayload(stored));
       for (const tag of tags) addToTagIndex(tag, cacheKey);
     } catch {

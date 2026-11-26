@@ -39,7 +39,7 @@ import {
   streamToBuffer,
   withRedis,
 } from "@publira/next-cache-handlers";
-import { buildId, diskDir, keyPrefix, redisUrl, serverDir } from "./config.mjs";
+import { buildId, diskDir, keyPrefix, redisUrl, serverDir, nowMs } from "./config.mjs";
 
 // Cấu hình Redis dùng chung cho cả 2 handler (keyPrefix đã gồm BUILD_ID).
 export const cacheConfig = resolveCacheHandlerConfig({ redisUrl, keyPrefix });
@@ -65,11 +65,16 @@ const TIMEOUT = Symbol("redis-timeout");
 let redisDeadUntil = 0;
 
 export function redisUsable() {
-  return Date.now() >= redisDeadUntil;
+  // Redis tắt bằng env (PNCH_REDIS_URL rỗng/off/disabled/false — vd. lúc
+  // `docker build`, xem Dockerfile): bỏ qua hẳn tầng L2, không gọi
+  // @publira. Nếu không, get() của @publira vẫn chạy (Date.now() bên
+  // trong) ngay trong prerender và làm `next build` lỗi với cacheComponents.
+  if (!cacheConfig.redisUrl) return false;
+  return nowMs() >= redisDeadUntil;
 }
 
 export function markRedisDead() {
-  redisDeadUntil = Date.now() + REDIS_COOLDOWN_MS;
+  redisDeadUntil = nowMs() + REDIS_COOLDOWN_MS;
 }
 
 /**
@@ -146,10 +151,10 @@ export function recordPendingTags(kind, tags, durations) {
   // chạy tuần tự từng mục (mỗi mục tối đa 300ms).
   const existing = list.find((p) => p.kind === kind && JSON.stringify([...p.tags].sort()) === key);
   if (existing) {
-    existing.at = Date.now();
+    existing.at = nowMs();
     existing.durations = durations ?? null;
   } else {
-    list.push({ kind, tags: [...tags], durations: durations ?? null, at: Date.now() });
+    list.push({ kind, tags: [...tags], durations: durations ?? null, at: nowMs() });
   }
   savePendingTags();
 }
@@ -258,7 +263,7 @@ export function deleteDiskEntriesForTags(kind, tags) {
 (function pruneOldDiskDirs() {
   try {
     const base = dirname(diskDir);
-    const now = Date.now();
+    const now = nowMs();
     for (const entry of readdirSync(base, { withFileTypes: true })) {
       if (!entry.isDirectory() || entry.name === buildId) continue;
       const path = join(base, entry.name);
@@ -278,7 +283,7 @@ export function deleteDiskEntriesForTags(kind, tags) {
 // Incremental: tag -> thời điểm revalidate (ms, wall clock).
 const incTagMirror = new Map();
 
-export function noteIncTagRevalidated(tags, at = Date.now()) {
+export function noteIncTagRevalidated(tags, at = nowMs()) {
   for (const tag of tags) incTagMirror.set(tag, at);
 }
 
@@ -360,7 +365,7 @@ export async function hydrateUcTagMirror() {
 }
 
 export function noteUcTagRevalidated(tags, durations) {
-  const now = Date.now();
+  const now = nowMs();
   const revalidation = {
     expiredAt: durations?.expire === undefined ? now : now + durations.expire * 1000,
     staleAt: now,
@@ -378,7 +383,7 @@ const WALL_CLOCK_OFFSET_HISTORY_MS = 36e5;
 
 function wallClockOffset() {
   const at = performance.timeOrigin + performance.now();
-  const offset = Date.now() - at;
+  const offset = nowMs() - at;
   const last = offsetHistory.at(-1);
   if (last === undefined || Math.abs(offset - last.offset) >= 1) {
     offsetHistory.push({ at, offset });
@@ -476,7 +481,7 @@ export function extractTags(data, ctx) {
 export function checkUcEntry(stored, softTags) {
   if (!stored || typeof stored !== "object") return null;
   if (typeof stored.valueBase64 !== "string") return null;
-  const now = Date.now();
+  const now = nowMs();
   // Giống @publira: dev dùng expire, production dùng revalidate làm ngưỡng.
   const maxAgeSeconds = process.env.__NEXT_DEV_SERVER ? stored.expire : stored.revalidate;
   if (now > stored.timestamp + maxAgeSeconds * 1000) return null;
