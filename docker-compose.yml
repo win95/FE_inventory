@@ -81,6 +81,7 @@ services:
         # chỉ dùng phía server (remotePatterns + URL media) nên giá trị
         # localhost ở đây vẫn đúng khi build trong Compose.
         NEXT_PUBLIC_STRAPI_URL: ${NEXT_PUBLIC_STRAPI_URL:-http://localhost:1337}
+        GIT_SHA: ${GIT_SHA:-dev}
     environment:
       # SSR trong container gọi Strapi qua tên service (localhost là chính container).
       STRAPI_INTERNAL_URL: http://strapi:1337
@@ -92,6 +93,8 @@ services:
       # thì để redis://localhost:6379 (xem .env.example).
       PNCH_REDIS_URL: ${PNCH_REDIS_URL:-redis://redis:6379}
       PNCH_CACHE_APP: ${PNCH_CACHE_APP:-awing}
+      # Secret cho POST /api/revalidate (khớp REVALIDATE_SECRET ở BE_inventory/.env).
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-}
     restart: unless-stopped
     ports:
       - "3000:3000"
